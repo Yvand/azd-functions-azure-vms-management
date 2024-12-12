@@ -122,121 +122,6 @@ If you never heard about `DefaultAzureCredential`, you should familirize yoursel
 }
 ```
 
-## Grant the functions access to SharePoint when they run on the local environment
-
-`DefaultAzureCredential` will preferentially use the delegated credentials of `Azure CLI` to authenticate to SharePoint.  
-Use the Microsoft Graph PowerShell script below to grant the SharePoint delegated permission `AllSites.Manage` to the `Azure CLI`'s service principal:
-
-```powershell
-Connect-MgGraph -Scope "Application.Read.All", "DelegatedPermissionGrant.ReadWrite.All"
-$scopeName = "AllSites.Manage"
-$requestorAppPrincipalObj = Get-MgServicePrincipal -Filter "displayName eq 'Microsoft Azure CLI'"
-$resourceAppPrincipalObj = Get-MgServicePrincipal -Filter "displayName eq 'Office 365 SharePoint Online'"
-
-$params = @{
-  clientId = $requestorAppPrincipalObj.Id
-  consentType = "AllPrincipals"
-  resourceId = $resourceAppPrincipalObj.Id
-  scope = $scopeName
-}
-New-MgOauth2PermissionGrant -BodyParameter $params
-```
-
-> [!WARNING]  
-> The service principal for `Azure CLI` may not exist in your tenant. If so, check [this issue](https://github.com/Azure/azure-cli/issues/28628) to add it.
-
-> [!NOTE]  
-> `AllSites.Manage` is the minimum permission required to register a webhook.
-> `Sites.Selected` cannot be used because it does not exist as a delegated permission in the SharePoint API.
-
-## Grant the functions access to SharePoint when they run in Azure
-
-`DefaultAzureCredential` will use a managed identity to authenticate to SharePoint. This may be the existing, system-assigned managed identity of the functions service, or a user-assigned managed identity.  
-This tutorial will assume that the system-assigned managed identity is used.
-
-### Grant the SharePoint API permission Sites.Selected to the managed identity
-
-Navigate to the [function apps in the Azure portal](https://portal.azure.com/#blade/HubsExtension/BrowseResourceBlade/resourceType/Microsoft.Web%2Fsites/kind/functionapp) > Select your app > Identity. Note the `Object (principal) ID` of the system-assigned managed identity.  
-In this tutorial, it is `d3e8dc41-94f2-4b0f-82ff-ed03c363f0f8`.  
-Then, use one of the scripts below to grant it the app-only permission `Sites.Selected` on the SharePoint API:
-
-<details>
-  <summary>Using the Microsoft Graph PowerShell SDK</summary>
-
-```powershell
-# This script requires the modules Microsoft.Graph.Authentication, Microsoft.Graph.Applications, Microsoft.Graph.Identity.SignIns, which can be installed with the cmdlet Install-Module below:
-# Install-Module Microsoft.Graph.Authentication, Microsoft.Graph.Applications, Microsoft.Graph.Identity.SignIns -Scope CurrentUser -Repository PSGallery -Force
-Connect-MgGraph -Scope "Application.Read.All", "AppRoleAssignment.ReadWrite.All"
-$managedIdentityObjectId = "d3e8dc41-94f2-4b0f-82ff-ed03c363f0f8" # 'Object (principal) ID' of the managed identity
-$scopeName = "Sites.Selected"
-$resourceAppPrincipalObj = Get-MgServicePrincipal -Filter "displayName eq 'Office 365 SharePoint Online'" # SPO
-$targetAppPrincipalAppRole = $resourceAppPrincipalObj.AppRoles | ? Value -eq $scopeName
-
-$appRoleAssignment = @{
-    "principalId" = $managedIdentityObjectId
-    "resourceId"  = $resourceAppPrincipalObj.Id
-    "appRoleId"   = $targetAppPrincipalAppRole.Id
-}
-New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $managedIdentityObjectId -BodyParameter $appRoleAssignment | Format-List
-```
-
-</details>
-   
-<details>
-  <summary>Using az cli in Bash</summary>
-
-```bash
-managedIdentityObjectId="d3e8dc41-94f2-4b0f-82ff-ed03c363f0f8" # 'Object (principal) ID' of the managed identity
-resourceServicePrincipalId=$(az ad sp list --query '[].[id]' --filter "displayName eq 'Office 365 SharePoint Online'" -o tsv)
-resourceServicePrincipalAppRoleId="$(az ad sp show --id $resourceServicePrincipalId --query "appRoles[?starts_with(value, 'Sites.Selected')].[id]" -o tsv)"
-
-az rest --method POST --uri "https://graph.microsoft.com/v1.0/servicePrincipals/${managedIdentityObjectId}/appRoleAssignments" --headers 'Content-Type=application/json' --body "{ 'principalId': '${managedIdentityObjectId}', 'resourceId': '${resourceServicePrincipalId}', 'appRoleId': '${resourceServicePrincipalAppRoleId}' }"
-```
-
-</details>
-
-### Grant the managed identity effective access to a SharePoint site
-
-Navigate to the [Enterprise applications in the Entra ID portal](https://entra.microsoft.com/#view/Microsoft_AAD_IAM/StartboardApplicationsMenuBlade/) > Set the filter `Application type` to `Managed Identities` > Click on your managed identity and note its `Application ID`.  
-In this tutorial, it is `3150363e-afbe-421f-9785-9d5404c5ae34`.  
-
-> [!WARNING]  
-> In this step, we will use the `Application ID` of the managed identity, while in the previous step we used its `Object ID`, be mindful about the risk of confusion.
-
-Then, use one of the scripts below to grant it the app-only permission `manage` on a specific SharePoint site:
-
-> [!NOTE]  
-> The managed identity of the functions service is granted SharePoint permission `manage`, because it is the minimum required to register a webhook.
-
-<details>
-  <summary>Using PnP PowerShell</summary>
-
-[PnP PowerShell](https://pnp.github.io/powershell/cmdlets/Grant-PnPAzureADAppSitePermission.html)
-
-```powershell
-Connect-PnPOnline -Url "https://YOUR_SHAREPOINT_TENANT_PREFIX.sharepoint.com/sites/YOUR_SHAREPOINT_SITE_NAME" -Interactive -ClientId "YOUR_PNP_APP_CLIENT_ID"
-Grant-PnPAzureADAppSitePermission -AppId "3150363e-afbe-421f-9785-9d5404c5ae34" -DisplayName "YOUR_FUNC_APP_NAME" -Permissions Manage
-```
-
-</details>
-   
-<details>
-  <summary>Using m365 cli in Bash</summary>
-
-[m365 cli](https://pnp.github.io/cli-microsoft365/cmd/spo/site/site-apppermission-add/)
-
-```bash
-targetapp="3150363e-afbe-421f-9785-9d5404c5ae34"
-siteUrl="https://YOUR_SHAREPOINT_TENANT_PREFIX.sharepoint.com/sites/YOUR_SHAREPOINT_SITE_NAME"
-m365 spo site apppermission add --appId $targetapp --permission manage --siteUrl $siteUrl
-```
-
-</details>
-
-> [!IMPORTANT]  
-> The app registration used to run those commands must have at least the following permissions:
-> - Delegated permission `Application.ReadWrite.All` in the Graph API
-> - Delegated permission `AllSites.FullControl` in the SharePoint API
 
 ## Call the functions
 
@@ -256,24 +141,17 @@ Below is a sample script in Bash that calls the functions in Azure using `curl`:
 # Edit those variables to fit your app function
 funchost="YOUR_FUNC_APP_NAME"
 code="YOUR_HOST_KEY"
-notificationUrl="https://${funchost}.azurewebsites.net/api/webhooks/service?code=${code}"
-listTitle="YOUR_SHAREPOINT_LIST"
+resourceGroup="YOUR_RESOURCE_GROUP"
+vmsParameter="&vms=VM1,VM2"
 
-# List all the webhooks registered on a list
-curl "https://${funchost}.azurewebsites.net/api/webhooks/list?code=${code}&listTitle=${listTitle}"
+# List all the virtual machines in a resource group
+curl "https://${funchost}.azurewebsites.net/api/vms/list?code=${code}&g=${resourceGroup}"
 
-# Register a webhook
-curl -X POST "https://${funchost}.azurewebsites.net/api/webhooks/register?code=${code}&listTitle=${listTitle}&notificationUrl=${notificationUrl}"
+# Start the specified virtual machines and wait until completion
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?code=${code}&g=${resourceGroup}${vmsParameter}&wait"
 
-# Show this webhook registered on a list
-curl "https://${funchost}.azurewebsites.net/api/webhooks/show?code=${code}&listTitle=${listTitle}&notificationUrl=${notificationUrl}"
-
-# Remove the webhook from the list
-# Step 1: Get the webhook id in the output of the function /webhooks/show
-webhookId=$(curl -s "https://${funchost}.azurewebsites.net/api/webhooks/show?code=${code}&listTitle=${listTitle}&notificationUrl=${notificationUrl}" | \
-    python3 -c "import sys, json; document = json.load(sys.stdin); document and print(document['id'])")
-# Step 2: Call function /webhooks/remove and pass the webhookId
-curl -X POST "https://${funchost}.azurewebsites.net/api/webhooks/remove?code=${code}&listTitle=${listTitle}&webhookId=${webhookId}"
+# Deallocate the specified virtual machines and wait until completion
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?code=${code}&g=${resourceGroup}${vmsParameter}"
 ```
 
 The same script, which calls the functions when they run in your local environment:
@@ -281,25 +159,17 @@ The same script, which calls the functions when they run in your local environme
 ```bash
 # Edit those variables to fit your app function
 funchost="YOUR_FUNC_APP_NAME"
-code="YOUR_HOST_KEY"
-notificationUrl="https://${funchost}.azurewebsites.net/api/webhooks/service?code=${code}"
-listTitle="YOUR_SHAREPOINT_LIST"
+resourceGroup="YOUR_RESOURCE_GROUP"
+vmsParameter="&vms=VM1,VM2"
 
-# List all the webhooks registered on a list
-curl "http://localhost:7071/api/webhooks/list?listTitle=${listTitle}"
+# List all the virtual machines in a resource group
+curl "http://localhost:7071/api/vms/list?g=${resourceGroup}"
 
-# Register a webhook
-curl -X POST "http://localhost:7071/api/webhooks/register?listTitle=${listTitle}&notificationUrl=${notificationUrl}"
+# Start the specified virtual machines and wait until completion
+curl -X POST "http://localhost:7071/api/vms/start?g=${resourceGroup}${vmsParameter}&wait"
 
-# Show this webhook registered on a list
-curl "http://localhost:7071/api/webhooks/show?listTitle=${listTitle}&notificationUrl=${notificationUrl}"
-
-# Remove the webhook from the list
-# Step 1: Get the webhook id in the output of the function /webhooks/show
-webhookId=$(curl -s "http://localhost:7071/api/webhooks/show?listTitle=${listTitle}&notificationUrl=${notificationUrl}" | \
-    python3 -c "import sys, json; document = json.load(sys.stdin); document and print(document['id'])")
-# Step 2: Call function /webhooks/remove and pass the webhookId
-curl -X POST "http://localhost:7071/api/webhooks/remove?listTitle=${listTitle}&webhookId=${webhookId}"
+# Deallocate the specified virtual machines and wait until completion
+curl -X POST "http://localhost:7071/api/vms/deallocate?g=${resourceGroup}${vmsParameter}&wait"
 ```
 
 ## Review the logs
