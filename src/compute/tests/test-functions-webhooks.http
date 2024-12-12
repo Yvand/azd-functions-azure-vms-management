@@ -1,0 +1,5 @@
+# @name vmsList
+GET {{ $dotenv %baseUrl }}/api/vms/list?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }} HTTP/1.1
+Accept: application/json
+
+###
