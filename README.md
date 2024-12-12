@@ -1,6 +1,6 @@
 ---
-name: Azure Functions for SharePoint Online
-description: This quickstart uses azd CLI to deploy Azure Functions which can connect to your own SharePoint Online tenant.
+name: Azure Functions for Azure Compute SDK
+description: This quickstart uses azd CLI to deploy Azure Functions to manage your virtual machines running in Azure.
 page_type: sample
 languages:
 - azdeveloper
@@ -9,20 +9,17 @@ languages:
 - typescript
 products:
 - azure-functions
-- sharepoint-online
-urlFragment: functions-quickstart-spo-azd
+urlFragment: functions-quickstart-typescript-azuresdk
 ---
 
 # Azure Functions for Azure Compute SDK
 
-This quickstart is based on [this repository](https://github.com/Azure-Samples/functions-quickstart-typescript-azd). It uses Azure Developer command-line (azd) tools to deploy Azure Functions which can list, register and process [SharePoint Online webhooks](https://learn.microsoft.com/sharepoint/dev/apis/webhooks/overview-sharepoint-webhooks) on your own tenant.  
+This quickstart is based on [this repository](https://github.com/Yvand/functions-quickstart-spo-azd). It uses Azure Developer command-line (azd) tools to deploy Azure Functions which can start / stop virtual machines. on your own Azure subscription.  
 The Azure functions use the [Flex Consumption plan](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan), are written in TypeScript and run in Node.js 20.  
-The popular library [PnPjs](https://pnp.github.io/pnpjs/) is used to interact with SharePoint.  
 
 ## Overview
 
-5 HTTP-triggered functions are deployed to show, list, register, process and remove webhooks.  
-When receiving a notification from SharePoint, the service function will add a new item to the list `webhookHistory` (can be changed in environment variable `WebhookHistoryListTitle`). It will also record the event in Application Insights.
+This project deploys HTTP-triggered functions to start / stop virtual machines.
 
 ## Security of the Azure resources
 
@@ -37,7 +34,6 @@ The resources deployed in Azure are configured with a high level of security:
 + [Node.js 20](https://www.nodejs.org/)
 + [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local?pivots=programming-language-typescript#install-the-azure-functions-core-tools)
 + [Azure Developer CLI (AZD)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-+ Be `Owner` of the subscription (or have [`Role Based Access Control Administrator`](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/privileged#role-based-access-control-administrator)), to successfully assign Azure RBAC roles to the managed identity, as part of the provisioning process
 + To use Visual Studio Code to run and debug locally:
   + [Visual Studio Code](https://code.visualstudio.com/)
   + [Azure Functions extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurefunctions)
@@ -52,14 +48,14 @@ You can initialize a project from this `azd` template in one of these ways:
     azd init --template Yvand/functions-quickstart-spo-azd
     ```
 
-    Supply an environment name, such as `spofuncs-quickstart` when prompted. In `azd`, the environment is used to maintain a unique deployment context for your app.
+    Supply an environment name, such as `functions-azuresdk-main` when prompted. In `azd`, the environment is used to maintain a unique deployment context for your app.
 
-+ Clone the GitHub template repository, and create an `azd` environment (in this example, `spofuncs-quickstart`):
++ Clone the GitHub template repository, and create an `azd` environment (in this example, `functions-azuresdk-main`):
 
     ```shell
     git clone https://github.com/Yvand/functions-quickstart-spo-azd.git
     cd functions-quickstart-spo-azd
-    azd env new spofuncs-quickstart
+    azd env new functions-azuresdk-main
     ```
 
 ## Prepare your local environment
@@ -117,7 +113,7 @@ If you never heard about `DefaultAzureCredential`, you should familirize yoursel
     "NotActions": [
     ],
     "AssignableScopes": [
-        "/subscriptions/26508ee7-4aa7-4f59-9180-842360f2b153"
+        "/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
     ]
 }
 ```
