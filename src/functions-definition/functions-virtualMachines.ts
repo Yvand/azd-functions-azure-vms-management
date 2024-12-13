@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { logError, logInfo } from "../utils/loggingHandler.js";
-import { virtualMachines_deallocate, virtualMachines_list, virtualMachines_start } from "../compute/virtualMachines.js";
+import { disk_updateOsDiskSku, virtualMachines_deallocate, virtualMachines_list, virtualMachines_start } from "../compute/virtualMachines.js";
 import { VirtualMachine } from "@azure/arm-compute";
 
 // Built-in role: Virtual Machine Operator - https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/compute#virtual-machine-operator
@@ -39,7 +39,7 @@ export async function startVirtualMachines(request: HttpRequest, context: Invoca
     try {
         const g = request.query.get('g');
         const vmsParam = request.query.get('vms');
-        const wait = request.query.has('wait');
+        const wait = request.query.has('nowait') ? false : true;
         if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
         const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmsParam);
@@ -48,12 +48,6 @@ export async function startVirtualMachines(request: HttpRequest, context: Invoca
             promises.push(virtualMachines_start(g, vm, wait));
         });
         const result: any[] = await Promise.all(promises);
-        // [result, error] = await safeWait(sp.web.lists.getByTitle(listTitle).subscriptions.add(notificationUrl, expiryDate.toISOString()));
-        // if (error) {
-        //     const errorDetails = logError(context, error, `Could not register webhook '${notificationUrl}' in list '${listTitle}'`);
-        //     return { status: errorDetails.httpStatus, jsonBody: errorDetails };
-        // }
-        // logInfo(context, `message'. Result: ${JSON.stringify(result)}`);
         logInfo(context, `Started the following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
         return { status: 200, jsonBody: result };
     }
@@ -67,7 +61,7 @@ export async function deallocateVirtualMachines(request: HttpRequest, context: I
     try {
         const g = request.query.get('g');
         const vmsParam = request.query.get('vms');
-        const wait = request.query.has('wait');
+        const wait = request.query.has('nowait') ? false : true;
         if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
         const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmsParam);
@@ -77,6 +71,29 @@ export async function deallocateVirtualMachines(request: HttpRequest, context: I
         });
         const result: any[] = await Promise.all(promises);
         logInfo(context, `Deallocated the following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
+        return { status: 200, jsonBody: result };
+    }
+    catch (error: unknown) {
+        const errorDetails = logError(context, error, context.functionName);
+        return { status: errorDetails.httpStatus, jsonBody: errorDetails };
+    }
+};
+
+export async function updateVirtualMachinesOsDiskSku(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+    try {
+        const g = request.query.get('g');
+        const vmsParam = request.query.get('vms');
+        const wait = request.query.has('nowait') ? false : true;
+        const skuName = request.query.get('sku') || undefined;
+        if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
+
+        const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmsParam);
+        let promises: Promise<any>[] = [];
+        vmNames.forEach(async (vm) => {
+            promises.push(disk_updateOsDiskSku(g, vm, skuName, wait));
+        });
+        const result: any[] = await Promise.all(promises);
+        logInfo(context, `Updated the OS disk SKU of following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
         return { status: 200, jsonBody: result };
     }
     catch (error: unknown) {
@@ -102,3 +119,4 @@ const getVMNamesFromFuncParameter = async(g: string, vmsParam: string | null) =>
 app.http('virtualMachines-list', { methods: ['GET'], authLevel: 'function', handler: listVirtualMachines, route: 'vms/list' });
 app.http('virtualMachines-start', { methods: ['POST'], authLevel: 'function', handler: startVirtualMachines, route: 'vms/start' });
 app.http('virtualMachines-deallocate', { methods: ['POST'], authLevel: 'function', handler: deallocateVirtualMachines, route: 'vms/deallocate' });
+app.http('virtualMachines-updateOsDiskSku', { methods: ['POST'], authLevel: 'function', handler: updateVirtualMachinesOsDiskSku, route: 'vms/updateOsDiskSku' });
