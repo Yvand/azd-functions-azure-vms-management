@@ -3,7 +3,7 @@ export const CommonConfig = {
     IsLocalEnvironment: process.env.AZURE_FUNCTIONS_ENVIRONMENT === "Development" ? true : false,
     UserAssignedManagedIdentityClientId: process.env.UserAssignedManagedIdentityClientId || undefined,
     SubscriptionId: process.env.SubscriptionId || "",
-    ResourceGroupName: process.env.ResourceGroupName,
+    ResourceGroupNames: process.env.ResourceGroupNames,
     VirtualMachineNames: process.env.VirtualMachineNames || "*",
     DiskSkuName: process.env.DiskSkuName || "StandardSSD_LRS",
 }

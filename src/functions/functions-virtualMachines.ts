@@ -100,7 +100,7 @@ export async function updateVirtualMachinesOsDiskSkuInternal(context: Invocation
         promises.push(disk_updateOsDiskSku(g, vm, skuName, wait));
     });
     const result: any[] = await Promise.all(promises);
-    logInfo(context, `Updated the OS disk SKU of following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
+    logInfo(context, `Updated the OS disk to SKU '${skuName}' for the following virtual machines in resource group '${g}': '${vmNames.join(', ')}'`);
     return result;
 };
 
@@ -127,13 +127,15 @@ app.timer('Timer_UpdateOsDiskSku', {
     schedule: "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
     runOnStartup: false,
     handler: async (timer: Timer, context: InvocationContext) => {
-        const g = CommonConfig.ResourceGroupName;
+        const resourceGroupNames: string | undefined = CommonConfig.ResourceGroupNames;
         const vmsParam = CommonConfig.VirtualMachineNames;
         const skuName = CommonConfig.DiskSkuName;
         const wait = true
-        if (!g) { logInfo(context, "no resource group was specified, give up", LogLevel.Warning); return; }
+        if (!resourceGroupNames) { logInfo(context, "no resource group was specified, give up", LogLevel.Warning); return; }
         try {
-            await updateVirtualMachinesOsDiskSkuInternal(context, g, vmsParam, skuName, wait);
+            resourceGroupNames.split(',').forEach(async (g) => {
+                await updateVirtualMachinesOsDiskSkuInternal(context, g, vmsParam, skuName, wait);
+            });
         }
         catch (error: unknown) {
             logError(context, error, context.functionName);

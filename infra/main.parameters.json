@@ -14,7 +14,7 @@
     "appSettings": {
       "value": {
         "SubscriptionId": "${SubscriptionId}",
-        "ResourceGroupName": "${ResourceGroupName}"
+        "ResourceGroupNames": "${ResourceGroupNames}"
       }
     }
   }
