@@ -138,34 +138,39 @@ Below is a sample script in Bash that calls the functions in Azure using `curl`:
 funchost="YOUR_FUNC_APP_NAME"
 code="YOUR_HOST_KEY"
 resourceGroup="YOUR_RESOURCE_GROUP"
-vmsParameter="&vms=VM1,VM2"
+vmsParameter="&vms=VMNAME1,VMNAME2"
 
 # List all the virtual machines in a resource group
 curl "https://${funchost}.azurewebsites.net/api/vms/list?code=${code}&g=${resourceGroup}"
 
-# Start the specified virtual machines and wait until completion
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?code=${code}&g=${resourceGroup}${vmsParameter}&wait"
+# Update the OS disk SKU of the specified virtual machines to StandardSSD_LRS
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/updateOsDiskSku?code=${code}&g=${resourceGroup}${vmsParameter}&sku=StandardSSD_LRS"
 
-# Deallocate the specified virtual machines and wait until completion
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?code=${code}&g=${resourceGroup}${vmsParameter}"
+# Start the specified virtual machines
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?code=${code}&g=${resourceGroup}${vmsParameter}"
+
+# Deallocate the specified virtual machines and does not wait until completion
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?code=${code}&g=${resourceGroup}${vmsParameter}&nowait"
 ```
 
 The same script, which calls the functions when they run in your local environment:
 
 ```bash
 # Edit those variables to fit your app function
-funchost="YOUR_FUNC_APP_NAME"
 resourceGroup="YOUR_RESOURCE_GROUP"
-vmsParameter="&vms=VM1,VM2"
+vmsParameter="&vms=VMNAME1,VMNAME2"
 
 # List all the virtual machines in a resource group
 curl "http://localhost:7071/api/vms/list?g=${resourceGroup}"
 
-# Start the specified virtual machines and wait until completion
-curl -X POST "http://localhost:7071/api/vms/start?g=${resourceGroup}${vmsParameter}&wait"
+# Update the OS disk SKU of the specified virtual machines to StandardSSD_LRS
+curl -X POST "http://localhost:7071/api/vms/updateOsDiskSku?g=${resourceGroup}${vmsParameter}"
 
-# Deallocate the specified virtual machines and wait until completion
-curl -X POST "http://localhost:7071/api/vms/deallocate?g=${resourceGroup}${vmsParameter}&wait"
+# Start the specified virtual machines
+curl -X POST "http://localhost:7071/api/vms/start?g=${resourceGroup}${vmsParameter}"
+
+# Deallocate the specified virtual machines and does not wait until completion
+curl -X POST "http://localhost:7071/api/vms/deallocate?g=${resourceGroup}${vmsParameter}&nowait"
 ```
 
 ## Review the logs
