@@ -2,7 +2,7 @@ import { InvocationContext } from "@azure/functions";
 import { CommonConfig } from "./common.js";
 
 
-enum LogLevel {
+export enum LogLevel {
     Verbose = 0,
     Info,
     Warning,
