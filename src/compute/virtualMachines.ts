@@ -64,7 +64,7 @@ export async function virtualMachines_deallocate(g: string, vmName: string, wait
     return result;
 }
 
-export async function disk_updateOsDiskSku(g: string, vmName: string, skuName: string = "StandardSSD_LRS", wait: boolean = true): Promise<any> {
+export async function disk_updateOsDiskSku(g: string, vmName: string, skuName: string, wait: boolean = true): Promise<any> {
     let result: any = {
         vmName: vmName,
         resourceGroup: g,

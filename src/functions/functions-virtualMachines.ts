@@ -2,10 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext, Timer } from "@a
 import { logError, logInfo, LogLevel } from "../utils/loggingHandler.js";
 import { disk_updateOsDiskSku, virtualMachines_deallocate, virtualMachines_list, virtualMachines_start } from "../compute/virtualMachines.js";
 import { VirtualMachine } from "@azure/arm-compute";
-
-// Built-in role: Virtual Machine Operator - https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/compute#virtual-machine-operator
-// https://github.com/MicrosoftDocs/azure-docs/issues/49475
-
+import { CommonConfig } from "../utils/common.js";
 
 /**
  * 
@@ -84,20 +81,11 @@ export async function updateVirtualMachinesOsDiskSku(request: HttpRequest, conte
         const g = request.query.get('g');
         const vmsParam = request.query.get('vms');
         const wait = request.query.has('nowait') ? false : true;
-        const skuName = request.query.get('sku') || undefined;
+        const skuName = request.query.get('sku') || CommonConfig.DiskSkuName;
         if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
         const result: any[] = await updateVirtualMachinesOsDiskSkuInternal(context, g, vmsParam, skuName, wait);
         return { status: 200, jsonBody: result };
-
-        // const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmsParam);
-        // let promises: Promise<any>[] = [];
-        // vmNames.forEach(async (vm) => {
-        //     promises.push(disk_updateOsDiskSku(g, vm, skuName, wait));
-        // });
-        // const result: any[] = await Promise.all(promises);
-        // logInfo(context, `Updated the OS disk SKU of following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
-        // return { status: 200, jsonBody: result };
     }
     catch (error: unknown) {
         const errorDetails = logError(context, error, context.functionName);
@@ -105,7 +93,7 @@ export async function updateVirtualMachinesOsDiskSku(request: HttpRequest, conte
     }
 };
 
-export async function updateVirtualMachinesOsDiskSkuInternal(context: InvocationContext, g: string, vmNamesParam: string | null, skuName: string | undefined, wait: boolean): Promise<any[]> {
+export async function updateVirtualMachinesOsDiskSkuInternal(context: InvocationContext, g: string, vmNamesParam: string | null, skuName: string, wait: boolean): Promise<any[]> {
     const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmNamesParam);
     let promises: Promise<any>[] = [];
     vmNames.forEach(async (vm) => {
@@ -139,9 +127,9 @@ app.timer('Timer_UpdateOsDiskSku', {
     schedule: "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
     runOnStartup: false,
     handler: async (timer: Timer, context: InvocationContext) => {
-        const g = process.env["RESOURCE_GROUP"];
-        const vmsParam = process.env["VM_NAMES"] || "*";
-        const skuName = process.env["SKU_NAME"];
+        const g = CommonConfig.ResourceGroupName;
+        const vmsParam = CommonConfig.VirtualMachineNames;
+        const skuName = CommonConfig.DiskSkuName;
         const wait = true
         if (!g) { logInfo(context, "no resource group was specified, give up", LogLevel.Warning); return; }
         try {
