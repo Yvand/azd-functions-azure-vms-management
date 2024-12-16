@@ -1,4 +1,4 @@
-import { ComputeManagementClient, Disk, DisksUpdateResponse, DiskUpdate, VirtualMachine } from "@azure/arm-compute";
+import { ComputeManagementClient, DiskUpdate, VirtualMachine } from "@azure/arm-compute";
 import { getAzureCredential } from "../utils/authentication.js";
 import { CommonConfig, safeWait } from "../utils/common.js";
 
@@ -14,6 +14,10 @@ export async function virtualMachines_list(g: string): Promise<VirtualMachine[]>
         virtualMachines.push(vm);
     }
     return virtualMachines;
+}
+
+export async function virtualMachines_get(g: string, vmName: string): Promise<VirtualMachine> {
+    return await client.virtualMachines.get(g, vmName);
 }
 
 export async function virtualMachines_start(g: string, vmName: string, wait: boolean = true): Promise<any> {

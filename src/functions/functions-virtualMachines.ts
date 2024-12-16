@@ -123,22 +123,24 @@ app.http('virtualMachines-start', { methods: ['POST'], authLevel: 'function', ha
 app.http('virtualMachines-deallocate', { methods: ['POST'], authLevel: 'function', handler: deallocateVirtualMachines, route: 'vms/deallocate' });
 app.http('virtualMachines-updateOsDiskSku', { methods: ['POST'], authLevel: 'function', handler: updateVirtualMachinesOsDiskSku, route: 'vms/updateOsDiskSku' });
 
-app.timer('Timer_UpdateOsDiskSku', {
-    schedule: "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
-    runOnStartup: false,
-    handler: async (timer: Timer, context: InvocationContext) => {
-        const resourceGroupNames: string | undefined = CommonConfig.ResourceGroupNames;
-        const vmsParam = CommonConfig.VirtualMachineNames;
-        const skuName = CommonConfig.DiskSkuName;
-        const wait = true
-        if (!resourceGroupNames) { logInfo(context, "no resource group was specified, give up", LogLevel.Warning); return; }
-        try {
-            resourceGroupNames.split(',').forEach(async (g) => {
-                await updateVirtualMachinesOsDiskSkuInternal(context, g, vmsParam, skuName, wait);
-            });
+if (CommonConfig.IsLocalEnvironment === false) {
+    app.timer('Timer_UpdateOsDiskSku', {
+        schedule: "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
+        runOnStartup: false,
+        handler: async (timer: Timer, context: InvocationContext) => {
+            const resourceGroupNames: string | undefined = CommonConfig.ResourceGroupNames;
+            const vmsParam = CommonConfig.VirtualMachineNames;
+            const skuName = CommonConfig.DiskSkuName;
+            const wait = true
+            if (!resourceGroupNames) { logInfo(context, "no resource group was specified, give up", LogLevel.Warning); return; }
+            try {
+                resourceGroupNames.split(',').forEach(async (g) => {
+                    await updateVirtualMachinesOsDiskSkuInternal(context, g, vmsParam, skuName, wait);
+                });
+            }
+            catch (error: unknown) {
+                logError(context, error, context.functionName);
+            }
         }
-        catch (error: unknown) {
-            logError(context, error, context.functionName);
-        }
-    }
-});
+    });
+}
