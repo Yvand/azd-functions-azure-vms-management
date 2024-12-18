@@ -1,15 +1,15 @@
-# @name vmsList
+# @name jitPoliciesList
 GET {{ $dotenv %baseUrl }}/api/jits/list?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }} HTTP/1.1
 Accept: application/json
 
 ###
 
-GET {{ $dotenv %baseUrl }}/api/jits/get?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }}&vm={{ $dotenv %vm }} HTTP/1.1
+GET {{ $dotenv %baseUrl }}/api/jits/get?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }}&jitPolicy={{ $dotenv %jitPolicy }} HTTP/1.1
 Accept: application/json
 
 ###
 
-POST {{ $dotenv %baseUrl }}/api/jits/initiate?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }}&vm={{ $dotenv %vm }} HTTP/1.1
+POST {{ $dotenv %baseUrl }}/api/jits/initiate?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }}&vm={{ $dotenv %vm }}&jitPolicy={{ $dotenv %jitPolicy }} HTTP/1.1
 Accept: application/json
 
 ###

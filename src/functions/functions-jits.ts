@@ -27,11 +27,10 @@ export async function listJits(request: HttpRequest, context: InvocationContext)
 export async function getJit(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
     try {
         const g = request.query.get('g');
-        const vmName = request.query.get('vm');
-        // const location = request.query.get('location') || "francecentral";
-        if (!g || !vmName) { return { status: 400, body: `Required parameters are missing.` }; }
+        const jitPolicyName = request.query.get('jitPolicy') || "default";
+        if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
-        const jits: JitNetworkAccessPolicy = await jits_get(g, vmName);
+        const jits = await jits_get(g, jitPolicyName);
         return { status: 200, jsonBody: jits };
     }
     catch (error: unknown) {
@@ -44,10 +43,11 @@ export async function initiateJit(request: HttpRequest, context: InvocationConte
     try {
         const g = request.query.get('g');
         const vmName = request.query.get('vm');
-        const location = request.query.get('location') || "francecentral";
+        const jitPolicyName = request.query.get('jitPolicy') || "default";
+        const durationInHours = Number(request.query.get('duration')) || 10;
         if (!g || !vmName) { return { status: 400, body: `Required parameters are missing.` }; }
 
-        const jits: JitNetworkAccessPolicy = await jits_initiate(g, location, vmName);
+        const jits = await jits_initiate(g, vmName, jitPolicyName, durationInHours);
         return { status: 200, jsonBody: jits };
     }
     catch (error: unknown) {
