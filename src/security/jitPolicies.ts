@@ -1,4 +1,4 @@
-import { AscLocation, JitNetworkAccessPoliciesInitiateResponse, JitNetworkAccessPolicy, JitNetworkAccessPolicyInitiatePort, JitNetworkAccessPolicyInitiateRequest, JitNetworkAccessPolicyVirtualMachine, SecurityCenter } from "@azure/arm-security";
+import { AscLocation, JitNetworkAccessPoliciesCreateOrUpdateResponse, JitNetworkAccessPoliciesInitiateResponse, JitNetworkAccessPolicy, JitNetworkAccessPolicyInitiatePort, JitNetworkAccessPolicyInitiateRequest, JitNetworkAccessPolicyVirtualMachine, SecurityCenter } from "@azure/arm-security";
 import { virtualMachines_get } from "../compute/virtualMachines.js";
 import { getAzureCredential } from "../utils/authentication.js";
 import { CommonConfig } from "../utils/common.js";
@@ -72,4 +72,24 @@ export async function jits_initiate(g: string, vmName: string, jitPolicyName: st
         ]
     };
     return await client.jitNetworkAccessPolicies.initiate(g, jitPolicyLocation, jitPolicyName, jitRequest);
+}
+
+export async function jits_createOrUpdate(g: string, jitPolicyName: string, virtualMachinePolicy: JitNetworkAccessPolicyVirtualMachine): Promise<JitNetworkAccessPoliciesCreateOrUpdateResponse> {
+    let jitPolicy = await jits_get(g, jitPolicyName);
+    if (!jitPolicy) {
+        const jitPolicyLocation = (await jits_getAscLocation()).name;
+        jitPolicy = {
+            name: jitPolicyName,
+            location: jitPolicyLocation,
+            virtualMachines: [virtualMachinePolicy]
+        }
+    } else {
+        const existingVmPolicy = jitPolicy.virtualMachines.find(vmJitPolicy => vmJitPolicy.id.toLowerCase() === virtualMachinePolicy.id.toLowerCase());
+        if (!existingVmPolicy) {
+            jitPolicy.virtualMachines.push(virtualMachinePolicy);
+        } else {
+            existingVmPolicy.ports = virtualMachinePolicy.ports;
+        }
+    }
+    return await client.jitNetworkAccessPolicies.createOrUpdate(g, jitPolicy.location as string, jitPolicyName, jitPolicy);
 }

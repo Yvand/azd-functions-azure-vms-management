@@ -129,18 +129,18 @@ if (CommonConfig.IsLocalEnvironment === false) {
         runOnStartup: false,
         handler: async (timer: Timer, context: InvocationContext) => {
             const resourceGroupNames: string | undefined = CommonConfig.ResourceGroupNames;
-            const vmsParam = CommonConfig.VirtualMachineNames;
             const skuName = CommonConfig.DiskSkuName;
             const wait = true
             if (!resourceGroupNames) { logInfo(context, "no resource group was specified, give up", LogLevel.Warning); return; }
-            try {
-                resourceGroupNames.split(',').forEach(async (g) => {
-                    await updateVirtualMachinesOsDiskSkuInternal(context, g, vmsParam, skuName, wait);
-                });
-            }
-            catch (error: unknown) {
-                logError(context, error, context.functionName);
-            }
+            
+            resourceGroupNames.split(',').forEach(async (g) => {
+                try {
+                    await updateVirtualMachinesOsDiskSkuInternal(context, g, '*', skuName, wait);
+                }
+                catch (error: unknown) {
+                    logError(context, error, `Could not update the OS disk to SKU '${skuName}' for the virtual machines in resource group '${g}'.`);
+                }
+            });
         }
     });
 }

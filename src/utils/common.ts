@@ -4,8 +4,8 @@ export const CommonConfig = {
     UserAssignedManagedIdentityClientId: process.env.UserAssignedManagedIdentityClientId || undefined,
     SubscriptionId: process.env.SubscriptionId || "",
     ResourceGroupNames: process.env.ResourceGroupNames,
-    VirtualMachineNames: process.env.VirtualMachineNames || "*",
     DiskSkuName: process.env.DiskSkuName || "StandardSSD_LRS",
+    AllowedIpAddressPrefixes: process.env.AllowedIpAddressPrefixes?.split(',') || [""],
 }
 
 // This method awaits on async calls and catches the exception if there is any - https://dev.to/sobiodarlington/better-error-handling-with-async-await-2e5m

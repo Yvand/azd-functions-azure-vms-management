@@ -13,3 +13,8 @@ POST {{ $dotenv %baseUrl }}/api/jits/initiate?{{ $dotenv %authCode }}g={{ $doten
 Accept: application/json
 
 ###
+
+POST {{ $dotenv %baseUrl }}/api/jits/createOrUpdate?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }}&vm={{ $dotenv %vm }}&jitPolicy={{ $dotenv %jitPolicy }} HTTP/1.1
+Accept: application/json
+
+###
