@@ -36,7 +36,7 @@ jobs:
       shell: bash
       run: |
         pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-        npm install
+        npm ci
         npm run build
         npm run test --if-present
         npm prune --production # Remove dev dependencies
