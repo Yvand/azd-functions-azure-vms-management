@@ -122,7 +122,6 @@ If you never heard about `DefaultAzureCredential`, you should familirize yoursel
 ## Call the functions
 
 For security reasons, when running in Azure, functions require an app key to pass in query string parameter `code`. The app keys can be found in the functions app service > App Keys.  
-Most functions take optional parameters `tenantPrefix` and `siteRelativePath`. If they are not specified, the values set in the app's environment variables will be used.
 
 ### Using vscode extension RestClient
 
@@ -138,19 +137,22 @@ Below is a sample script in Bash that calls the functions in Azure using `curl`:
 funchost="YOUR_FUNC_APP_NAME"
 code="YOUR_HOST_KEY"
 resourceGroup="YOUR_RESOURCE_GROUP"
+
+# VMs
 vmsParameter="&vms=VMNAME1,VMNAME2"
+curl "https://${funchost}.azurewebsites.net/api/vms/list?g=${resourceGroup}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/updateOsDiskSku?g=${resourceGroup}${vmsParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?g=${resourceGroup}${vmsParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?g=${resourceGroup}${vmsParameter}}&nowait"
 
-# List all the virtual machines in a resource group
-curl "https://${funchost}.azurewebsites.net/api/vms/list?code=${code}&g=${resourceGroup}"
-
-# Update the OS disk SKU of the specified virtual machines to StandardSSD_LRS
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/updateOsDiskSku?code=${code}&g=${resourceGroup}${vmsParameter}&sku=StandardSSD_LRS"
-
-# Start the specified virtual machines
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?code=${code}&g=${resourceGroup}${vmsParameter}"
-
-# Deallocate the specified virtual machines and does not wait until completion
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?code=${code}&g=${resourceGroup}${vmsParameter}&nowait"
+# JITs
+policyNameParameter="&policyName=default"
+vmParameter="&vm=vmName"
+curl "https://${funchost}.azurewebsites.net/api/jits/list?g=${resourceGroup}"
+curl "https://${funchost}.azurewebsites.net/api/jits/get?g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/jits/createOrUpdate?g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/jits/initiate?g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/jits/delete?g=${resourceGroup}${policyNameParameter}"
 ```
 
 The same script, which calls the functions when they run in your local environment:
@@ -158,19 +160,22 @@ The same script, which calls the functions when they run in your local environme
 ```bash
 # Edit those variables to fit your app function
 resourceGroup="YOUR_RESOURCE_GROUP"
+
+# VMs
 vmsParameter="&vms=VMNAME1,VMNAME2"
-
-# List all the virtual machines in a resource group
 curl "http://localhost:7071/api/vms/list?g=${resourceGroup}"
-
-# Update the OS disk SKU of the specified virtual machines to StandardSSD_LRS
 curl -X POST "http://localhost:7071/api/vms/updateOsDiskSku?g=${resourceGroup}${vmsParameter}"
-
-# Start the specified virtual machines
 curl -X POST "http://localhost:7071/api/vms/start?g=${resourceGroup}${vmsParameter}"
+curl -X POST "http://localhost:7071/api/vms/deallocate?g=${resourceGroup}${vmsParameter}}&nowait"
 
-# Deallocate the specified virtual machines and does not wait until completion
-curl -X POST "http://localhost:7071/api/vms/deallocate?g=${resourceGroup}${vmsParameter}&nowait"
+# JITs
+policyNameParameter="&policyName=default"
+vmParameter="&vm=VMNAME"
+curl "http://localhost:7071/api/jits/list?g=${resourceGroup}"
+curl "http://localhost:7071/api/jits/get?g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "http://localhost:7071/api/jits/createOrUpdate?g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "http://localhost:7071/api/jits/initiate?g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "http://localhost:7071/api/jits/delete?g=${resourceGroup}${policyNameParameter}"
 ```
 
 ## Review the logs
