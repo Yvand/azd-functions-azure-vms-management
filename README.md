@@ -99,21 +99,24 @@ If you never heard about `DefaultAzureCredential`, you should familirize yoursel
 
 ```json
 {
-    "Name": "Virtual Machine Operator Yvand",
-	"Description": "Perform VM actions for functions-quickstart-typescript-azuresdk.",
+    "Name": "Yvand/functions-quickstart-typescript-azuresdk",
     "IsCustom": true,
-    "Description": "Can deallocate, start  and restart virtual machines.",
+    "Description": "Can start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
     "Actions": [
         "Microsoft.Compute/*/read",
+        "Microsoft.Compute/virtualMachines/write",
         "Microsoft.Compute/virtualMachines/start/action",
         "Microsoft.Compute/virtualMachines/restart/action",
         "Microsoft.Compute/virtualMachines/deallocate/action",
-        "Microsoft.Compute/disks/write"
+        "Microsoft.Compute/disks/write",
+        "Microsoft.Security/locations/jitNetworkAccessPolicies/read",
+        "Microsoft.Security/locations/jitNetworkAccessPolicies/write",
+        "Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action"
     ],
     "NotActions": [
     ],
     "AssignableScopes": [
-        "/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        "/subscriptions/{subscriptionId}"
     ]
 }
 ```
