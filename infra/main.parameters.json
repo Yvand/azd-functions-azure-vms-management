@@ -14,7 +14,8 @@
     "appSettings": {
       "value": {
         "SubscriptionId": "${SubscriptionId}",
-        "ResourceGroupNames": "${ResourceGroupNames}"
+        "ResourceGroupNames": "${ResourceGroupNames}",
+        "AllowedIpAddressPrefixes": "${AllowedIpAddressPrefixes}"
       }
     }
   }
