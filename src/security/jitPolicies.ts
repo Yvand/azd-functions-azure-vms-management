@@ -38,7 +38,7 @@ export async function jits_getPolicyVorVirtualMachine(g: string, vmName: string,
     }
 }
 
-export async function jits_initiate(g: string, vmName: string, jitPolicyName: string, durationInHours: number): Promise<JitNetworkAccessPoliciesInitiateResponse | void> {
+export async function jits_initiate(g: string, jitPolicyName: string, vmName: string, durationInHours: number): Promise<JitNetworkAccessPoliciesInitiateResponse | void> {
     const jitPolicy = await jits_get(g, jitPolicyName);
     let jitPolicyLocation = jitPolicy?.location;
     if (!jitPolicy?.location) {
@@ -59,9 +59,24 @@ export async function jits_initiate(g: string, vmName: string, jitPolicyName: st
     vmPolicy.ports.forEach(port => {
         ports.push({
             number: port.number,
-            allowedSourceAddressPrefix: port.allowedSourceAddressPrefix,
+            allowedSourceAddressPrefix: port.allowedSourceAddressPrefixes ? port.allowedSourceAddressPrefixes[0] : port.allowedSourceAddressPrefix, // dumb workaround
             endTimeUtc: tenHoursLater
         });
+        // if (port.allowedSourceAddressPrefixes) {
+        //     port.allowedSourceAddressPrefixes.forEach(ipAddress => {
+        //         ports.push({
+        //             number: port.number,
+        //             allowedSourceAddressPrefix: ipAddress,
+        //             endTimeUtc: tenHoursLater
+        //         });
+        //     });
+        // } else {
+        //     ports.push({
+        //         number: port.number,
+        //         allowedSourceAddressPrefix: port.allowedSourceAddressPrefix,
+        //         endTimeUtc: tenHoursLater
+        //     });
+        // }
     });
     const jitRequest: JitNetworkAccessPolicyInitiateRequest = {
         virtualMachines: [
@@ -74,13 +89,15 @@ export async function jits_initiate(g: string, vmName: string, jitPolicyName: st
     return await client.jitNetworkAccessPolicies.initiate(g, jitPolicyLocation, jitPolicyName, jitRequest);
 }
 
-export async function jits_createOrUpdate(g: string, jitPolicyName: string, virtualMachinePolicy: JitNetworkAccessPolicyVirtualMachine): Promise<JitNetworkAccessPoliciesCreateOrUpdateResponse> {
+export async function jits_createOrUpdate(g: string, jitPolicyName: string, jitPolicyLocation: string, virtualMachinePolicy: JitNetworkAccessPolicyVirtualMachine): Promise<JitNetworkAccessPoliciesCreateOrUpdateResponse> {
     let jitPolicy = await jits_get(g, jitPolicyName);
     if (!jitPolicy) {
-        const jitPolicyLocation = (await jits_getAscLocation()).name;
+        // the jit location should match the VM location; otherwise Azure throws this REST error: The following Virtual Machines are in a different cloud, subscription, location or resource group than the JIT policy:
+        // const jitPolicyLocation = (await jits_getAscLocation()).name;
         jitPolicy = {
             name: jitPolicyName,
             location: jitPolicyLocation,
+            kind: "Basic",
             virtualMachines: [virtualMachinePolicy]
         }
     } else {
@@ -92,4 +109,13 @@ export async function jits_createOrUpdate(g: string, jitPolicyName: string, virt
         }
     }
     return await client.jitNetworkAccessPolicies.createOrUpdate(g, jitPolicy.location as string, jitPolicyName, jitPolicy);
+}
+
+export async function jits_delete(g: string, jitPolicyName: string): Promise<boolean> {
+    let jitPolicy = await jits_get(g, jitPolicyName);
+    if (jitPolicy && jitPolicy.location) {
+        await client.jitNetworkAccessPolicies.delete(g, jitPolicy.location, jitPolicyName);
+        return true;
+    }
+    return false;
 }
