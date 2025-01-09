@@ -1,0 +1,17 @@
+meta {
+  name: updateOsDiskSku
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://{{funchost}}.azurewebsites.net/api/vms/updateOsDiskSku?code={{code}}&g={{resourceGroup}}&vms={{vm}}
+  body: none
+  auth: none
+}
+
+params:query {
+  code: {{code}}
+  g: {{resourceGroup}}
+  vms: {{vm}}
+}

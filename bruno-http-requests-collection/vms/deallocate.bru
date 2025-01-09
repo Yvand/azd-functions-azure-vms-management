@@ -1,0 +1,17 @@
+meta {
+  name: deallocate
+  type: http
+  seq: 4
+}
+
+post {
+  url: https://{{funchost}}.azurewebsites.net/api/vms/deallocate?code={{code}}&g={{resourceGroup}}&vms={{vm}}
+  body: none
+  auth: none
+}
+
+params:query {
+  code: {{code}}
+  g: {{resourceGroup}}
+  vms: {{vm}}
+}

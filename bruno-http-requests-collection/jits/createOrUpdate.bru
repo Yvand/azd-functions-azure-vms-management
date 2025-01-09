@@ -1,0 +1,18 @@
+meta {
+  name: createOrUpdate
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://{{funchost}}.azurewebsites.net/api/jits/createOrUpdate?code={{code}}&g={{resourceGroup}}&policyName={{policyName}}&vm={{vm}}
+  body: none
+  auth: none
+}
+
+params:query {
+  code: {{code}}
+  g: {{resourceGroup}}
+  policyName: {{policyName}}
+  vm: {{vm}}
+}

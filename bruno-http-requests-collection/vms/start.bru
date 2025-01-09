@@ -1,0 +1,17 @@
+meta {
+  name: start
+  type: http
+  seq: 3
+}
+
+post {
+  url: https://{{funchost}}.azurewebsites.net/api/vms/start?code={{code}}&g={{resourceGroup}}&vms={{vm}}
+  body: none
+  auth: none
+}
+
+params:query {
+  code: {{code}}
+  g: {{resourceGroup}}
+  vms: {{vm}}
+}

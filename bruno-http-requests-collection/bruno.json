@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "functions-quickstart-typescript-azuresdk",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

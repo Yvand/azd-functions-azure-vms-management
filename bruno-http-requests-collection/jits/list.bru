@@ -1,0 +1,16 @@
+meta {
+  name: list
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://{{funchost}}.azurewebsites.net/api/jits/list?code={{code}}&g={{resourceGroup}}
+  body: none
+  auth: none
+}
+
+params:query {
+  code: {{code}}
+  g: {{resourceGroup}}
+}
