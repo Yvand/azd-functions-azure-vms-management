@@ -89,22 +89,21 @@ You can initialize a project from this `azd` template in one of these ways:
 
 1. The functions can also be run locally by executing command `npm run start`.
 
-# Grant the functions access to Azure
+# Grant permissions to the function app
 
-The authentication to SharePoint is done using `DefaultAzureCredential`, so the credential used depends if the functions run on your local environment, or in Azure.  
-If you never heard about `DefaultAzureCredential`, you should familirize yourself with its concept by reading [this article](https://aka.ms/azsdk/js/identity/credential-chains#use-defaultazurecredential-for-flexibility), before continuing.
+The function app will use its system-assigned managed identity to authenticate in the Azure subscription. In this section, we will create and assign a custom role definition to the function app's managed identity.
 
+## Create a custom role definition
 
+The script below creates a custom role definition with only the permissions strictly required for the function app to work correctly:
 
-
-```json
-{
+```shell
+az role definition create --role-definition '{
     "Name": "Yvand/functions-quickstart-typescript-azuresdk",
     "IsCustom": true,
     "Description": "Can start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
     "Actions": [
         "Microsoft.Compute/*/read",
-        "Microsoft.Compute/virtualMachines/write",
         "Microsoft.Compute/virtualMachines/start/action",
         "Microsoft.Compute/virtualMachines/restart/action",
         "Microsoft.Compute/virtualMachines/deallocate/action",
@@ -116,11 +115,22 @@ If you never heard about `DefaultAzureCredential`, you should familirize yoursel
     "NotActions": [
     ],
     "AssignableScopes": [
-        "/subscriptions/{subscriptionId}"
+        "/subscriptions/${subscriptionId}"
     ]
-}
+}'
 ```
 
+## Assign the custom role to the function app's managed identity
+
+The script below assigns the custom role to the function app's managed identity, in the whole subscription:
+
+```bash
+funcAppName="YOUR_FUNC_APP_NAME"
+funcAppPrincipalId=$(az ad sp list --filter "displayName eq '${funcAppName}' and servicePrincipalType eq 'ManagedIdentity'" --query "[0].id" -o tsv)
+customRoleDefinitionId=$(az role definition list --name "Yvand/functions-quickstart-typescript-azuresdk" --query "[0].id" -o tsv)
+subscriptionId=$(az account show --query id --output tsv)
+az role assignment create --assignee $funcAppPrincipalId --role $customRoleDefinitionId --scope "/subscriptions/${subscriptionId}"
+```
 
 ## Call the functions
 
