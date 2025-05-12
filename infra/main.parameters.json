@@ -11,6 +11,12 @@
     "resourceGroupName": {
       "value": "${AZURE_ENV_NAME}"
     },
+    "vnetEnabled": {
+      "value": "${VNET_ENABLED}"
+    },
+    "allowedIpAddresses": {
+      "value": ["${ALLOWED_IP_ADDRESSES}"]
+    },
     "appSettings": {
       "value": {
         "SubscriptionId": "${SubscriptionId}",
