@@ -1,5 +1,6 @@
 param storageAccountName string
 param appInsightsName string
+param keyVaultName string = ''
 param managedIdentityPrincipalId string // Principal ID for the Managed Identity
 param userIdentityPrincipalId string = '' // Principal ID for the User Identity
 param allowUserIdentityPrincipal bool = false // Flag to enable user identity role assignments
@@ -12,6 +13,8 @@ var storageRoleDefinitionId  = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b' //Storage 
 var queueRoleDefinitionId = '974c5e8b-45b9-4653-ba55-5f855dd0fb88' // Storage Queue Data Contributor role
 var tableRoleDefinitionId = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3' // Storage Table Data Contributor role
 var monitoringRoleDefinitionId = '3913510d-42f4-4e42-8a64-420c390055eb' // Monitoring Metrics Publisher role ID
+var keyVaultSecretsUserRoleDefinitionId = '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role ID
+var keyVaultAdministratorRoleDefinitionId = '00482a5a-887f-4fb3-b363-3b7fe8e74483' // Key Vault Secrets User role ID
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
   name: storageAccountName
@@ -19,6 +22,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing 
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: appInsightsName
+}
+
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!empty(keyVaultName)) {
+  name: keyVaultName
 }
 
 // Role assignment for Storage Account (Blob) - Managed Identity
@@ -106,5 +113,27 @@ resource appInsightsRoleAssignment_User 'Microsoft.Authorization/roleAssignments
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', monitoringRoleDefinitionId)
     principalId: userIdentityPrincipalId // Use user identity ID
     principalType: 'User' // User Identity is a User Principal
+  }
+}
+
+// Role assignment for the key-vault - Managed Identity
+resource vaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(keyVaultName))  {
+  name: guid(keyVault.id, managedIdentityPrincipalId, keyVaultSecretsUserRoleDefinitionId)
+  scope: keyVault
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleDefinitionId)
+    principalId: managedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Role assignment for the key-vault - User Identity
+resource vaultRoleAssignment_User 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(keyVaultName))  {
+  name: guid(keyVault.id, userIdentityPrincipalId, keyVaultAdministratorRoleDefinitionId)
+  scope: keyVault
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', keyVaultAdministratorRoleDefinitionId)
+    principalId: userIdentityPrincipalId
+    principalType: 'User'
   }
 }

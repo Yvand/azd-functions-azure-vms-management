@@ -55,6 +55,7 @@ param allowedIpAddresses array = []
 param appSettings object
 
 param vnetEnabled bool
+param addKeyVault bool = false
 param apiServiceName string = ''
 param apiUserAssignedIdentityName string = ''
 param applicationInsightsName string = ''
@@ -63,6 +64,7 @@ param logAnalyticsName string = ''
 param resourceGroupName string = ''
 param storageAccountName string = ''
 param vNetName string = ''
+param keyVaultName string = ''
 @description('Id of the user identity to be used for testing and debugging. This is not required in production. Leave empty if not needed.')
 param principalId string = deployer().objectId
 
@@ -189,6 +191,7 @@ module rbac 'app/rbac.bicep' = {
     enableQueue: storageEndpointConfig.enableQueue
     enableTable: storageEndpointConfig.enableTable
     allowUserIdentityPrincipal: storageEndpointConfig.allowUserIdentityPrincipal
+    keyVaultName: vault.outputs.name
   }
 }
 
@@ -239,6 +242,28 @@ module monitoring 'br/public:avm/res/insights/component:0.6.0' = {
     tags: tags
     workspaceResourceId: logAnalytics.outputs.resourceId
     disableLocalAuth: true
+  }
+}
+
+// Azure key-vault
+module vault 'br/public:avm/res/key-vault/vault:0.12.1' = if (addKeyVault) {
+  name: '${uniqueString(deployment().name, location)}-vault'
+  scope: rg
+  params: {
+    name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
+    enablePurgeProtection: false
+  }
+}
+
+module vaultPrivateEndpoint 'app/vault-PrivateEndpoint.bicep' = if (vnetEnabled && addKeyVault) {
+  name: 'vaultPrivateEndpoint'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    virtualNetworkName: !empty(vNetName) ? vNetName : '${abbrs.networkVirtualNetworks}${resourceToken}'
+    subnetName: vnetEnabled ? serviceVirtualNetwork.outputs.peSubnetName : '' // Keep conditional check for safety, though module won't run if !vnetEnabled
+    resourceName: vault.outputs.name
   }
 }
 
