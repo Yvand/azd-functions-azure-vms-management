@@ -252,6 +252,17 @@ module vault 'br/public:avm/res/key-vault/vault:0.12.1' = if (addKeyVault) {
   params: {
     name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
     enablePurgeProtection: false
+    publicNetworkAccess: vnetEnabled ? 'Disabled' : 'Enabled'
+    networkAcls: vnetEnabled ? {
+      defaultAction: 'Deny'
+      bypass: 'AzureServices'
+      ipRules: empty(allowedIpAddressesNoEmptyString) ? [] : ipRules
+    } : {
+      defaultAction: 'Allow'
+      bypass: 'AzureServices'
+      ipRules: empty(allowedIpAddressesNoEmptyString) ? [] : ipRules
+    }
+    enableSoftDelete: false
   }
 }
 

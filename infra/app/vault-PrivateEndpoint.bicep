@@ -26,8 +26,8 @@ resource keyVaultResource 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 var vaultPrivateDNSZoneName = 'privatelink.vaultcore.azure.net'
 
 // AVM module for vault Private DNS Zone
-module privateDnsZoneBlobDeployment 'br/public:avm/res/network/private-dns-zone:0.7.1' = {
-  name: 'blob-private-dns-zone-deployment'
+module privateDnsZoneVaultDeployment 'br/public:avm/res/network/private-dns-zone:0.7.1' = {
+  name: 'vault-private-dns-zone-deployment'
   params: {
     name: vaultPrivateDNSZoneName
     location: 'global'
@@ -45,7 +45,7 @@ module privateDnsZoneBlobDeployment 'br/public:avm/res/network/private-dns-zone:
 }
 
 // AVM module for Blob Private Endpoint with private DNS zone
-module blobPrivateEndpoint 'br/public:avm/res/network/private-endpoint:0.11.0' = {
+module vaultPrivateEndpoint 'br/public:avm/res/network/private-endpoint:0.11.0' = {
   name: 'vault-private-endpoint-deployment'
   params: {
     name: 'vault-private-endpoint'
@@ -66,11 +66,11 @@ module blobPrivateEndpoint 'br/public:avm/res/network/private-endpoint:0.11.0' =
     customDnsConfigs: []
     // Creates private DNS zone and links
     privateDnsZoneGroup: {
-      name: 'vaultARecord'
+      name: 'vaultPrivateDnsZoneGroup'
       privateDnsZoneGroupConfigs: [
         {
-          name: 'storageBlobARecord'
-          privateDnsZoneResourceId: privateDnsZoneBlobDeployment.outputs.resourceId
+          name: 'vaultARecord'
+          privateDnsZoneResourceId: privateDnsZoneVaultDeployment.outputs.resourceId
         }
       ]
     }

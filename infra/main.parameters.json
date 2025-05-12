@@ -14,6 +14,9 @@
     "vnetEnabled": {
       "value": "${VNET_ENABLED}"
     },
+    "addKeyVault": {
+      "value": "${addKeyVault}"
+    },
     "allowedIpAddresses": {
       "value": ["${ALLOWED_IP_ADDRESSES}"]
     },
