@@ -55,7 +55,10 @@ param allowedIpAddresses array = []
 param appSettings object
 
 param vnetEnabled bool
+param addKeyVault bool = false
 param apiServiceName string = ''
+@allowed(['SystemAssigned', 'UserAssigned'])
+param apiServiceIdentityType string = 'SystemAssigned'
 param apiUserAssignedIdentityName string = ''
 param applicationInsightsName string = ''
 param appServicePlanName string = ''
@@ -63,6 +66,7 @@ param logAnalyticsName string = ''
 param resourceGroupName string = ''
 param storageAccountName string = ''
 param vNetName string = ''
+param keyVaultName string = ''
 @description('Id of the user identity to be used for testing and debugging. This is not required in production. Leave empty if not needed.')
 param principalId string = deployer().objectId
 
@@ -72,7 +76,12 @@ var tags = { 'azd-env-name': environmentName }
 var functionAppName = !empty(apiServiceName) ? apiServiceName : '${abbrs.webSitesFunctions}api-${resourceToken}'
 var deploymentStorageContainerName = 'app-package-${take(functionAppName, 32)}-${take(toLower(uniqueString(functionAppName, resourceToken)), 7)}'
 // Check if allowedIpAddresses is empty or contains only an empty string
-var allowedIpAddressesNoEmptyString = empty(allowedIpAddresses) || (length(allowedIpAddresses) == 1 && contains(allowedIpAddresses, '')) ? [] : allowedIpAddresses
+var allowedIpAddressesNoEmptyString = empty(allowedIpAddresses) || (length(allowedIpAddresses) == 1 && contains(
+    allowedIpAddresses,
+    ''
+  ))
+  ? []
+  : allowedIpAddresses
 
 // Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -83,13 +92,15 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 
 // User assigned managed identity to be used by the function app to reach storage and other dependencies
 // Assign specific roles to this identity in the RBAC module
-module apiUserAssignedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.1' = {
+module apiUserAssignedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.1' = if (apiServiceIdentityType == 'UserAssigned') {
   name: 'apiUserAssignedIdentity'
   scope: rg
   params: {
     location: location
     tags: tags
-    name: !empty(apiUserAssignedIdentityName) ? apiUserAssignedIdentityName : '${abbrs.managedIdentityUserAssignedIdentities}api-${resourceToken}'
+    name: !empty(apiUserAssignedIdentityName)
+      ? apiUserAssignedIdentityName
+      : '${abbrs.managedIdentityUserAssignedIdentities}api-${resourceToken}'
   }
 }
 
@@ -125,8 +136,9 @@ module api './app/api.bicep' = {
     enableQueue: storageEndpointConfig.enableQueue
     enableTable: storageEndpointConfig.enableTable
     deploymentStorageContainerName: deploymentStorageContainerName
-    identityId: apiUserAssignedIdentity.outputs.resourceId
-    identityClientId: apiUserAssignedIdentity.outputs.clientId
+    identityType: apiServiceIdentityType
+    UserAssignedManagedIdentityId: apiServiceIdentityType == 'UserAssigned' ? apiUserAssignedIdentity.outputs.resourceId : ''
+    UserAssignedManagedIdentityClientId: apiServiceIdentityType == 'UserAssigned' ? apiUserAssignedIdentity.outputs.clientId : ''
     appSettings: appSettings
     virtualNetworkSubnetId: vnetEnabled ? serviceVirtualNetwork.outputs.appSubnetID : ''
   }
@@ -149,19 +161,21 @@ module storage 'br/public:avm/res/storage/storage-account:0.8.3' = {
     allowSharedKeyAccess: false // Disable local authentication methods as per policy
     dnsEndpointType: 'Standard'
     publicNetworkAccess: vnetEnabled ? 'Disabled' : 'Enabled'
-    networkAcls: vnetEnabled ? {
-      defaultAction: 'Deny'
-      bypass: 'None'
-      ipRules: empty(allowedIpAddressesNoEmptyString) ? [] : ipRules
-    } : {
-      defaultAction: 'Allow'
-      bypass: 'AzureServices'
-      ipRules: empty(allowedIpAddressesNoEmptyString) ? [] : ipRules
-    }
+    networkAcls: vnetEnabled
+      ? {
+          defaultAction: 'Deny'
+          bypass: 'None'
+          ipRules: empty(allowedIpAddressesNoEmptyString) ? [] : ipRules
+        }
+      : {
+          defaultAction: 'Allow'
+          bypass: 'AzureServices'
+          ipRules: empty(allowedIpAddressesNoEmptyString) ? [] : ipRules
+        }
     blobServices: {
-      containers: [{name: deploymentStorageContainerName}]
+      containers: [{ name: deploymentStorageContainerName }]
     }
-    minimumTlsVersion: 'TLS1_2'  // Enforcing TLS 1.2 for better security
+    minimumTlsVersion: 'TLS1_2' // Enforcing TLS 1.2 for better security
     location: location
     tags: tags
   }
@@ -169,11 +183,11 @@ module storage 'br/public:avm/res/storage/storage-account:0.8.3' = {
 
 // Define the configuration object locally to pass to the modules
 var storageEndpointConfig = {
-  enableBlob: true  // Required for AzureWebJobsStorage, .zip deployment, Event Hubs trigger and Timer trigger checkpointing
-  enableQueue: false  // Required for Durable Functions and MCP trigger
-  enableTable: false  // Required for Durable Functions and OpenAI triggers and bindings
-  enableFiles: false   // Not required, used in legacy scenarios
-  allowUserIdentityPrincipal: true   // Allow interactive user identity to access for testing and debugging
+  enableBlob: true // Required for AzureWebJobsStorage, .zip deployment, Event Hubs trigger and Timer trigger checkpointing
+  enableQueue: false // Required for Durable Functions and MCP trigger
+  enableTable: false // Required for Durable Functions and OpenAI triggers and bindings
+  enableFiles: false // Not required, used in legacy scenarios
+  allowUserIdentityPrincipal: true // Allow interactive user identity to access for testing and debugging
 }
 
 // Consolidated Role Assignments
@@ -183,17 +197,20 @@ module rbac 'app/rbac.bicep' = {
   params: {
     storageAccountName: storage.outputs.name
     appInsightsName: monitoring.outputs.name
-    managedIdentityPrincipalId: apiUserAssignedIdentity.outputs.principalId
+    managedIdentityPrincipalId: apiServiceIdentityType == 'UserAssigned'
+      ? apiUserAssignedIdentity.outputs.principalId
+      : api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
     userIdentityPrincipalId: principalId
     enableBlob: storageEndpointConfig.enableBlob
     enableQueue: storageEndpointConfig.enableQueue
     enableTable: storageEndpointConfig.enableTable
     allowUserIdentityPrincipal: storageEndpointConfig.allowUserIdentityPrincipal
+    keyVaultName: vault.outputs.name
   }
 }
 
 // Virtual Network & private endpoint to blob storage
-module serviceVirtualNetwork 'app/vnet.bicep' =  if (vnetEnabled) {
+module serviceVirtualNetwork 'app/vnet.bicep' = if (vnetEnabled) {
   name: 'serviceVirtualNetwork'
   scope: rg
   params: {
@@ -229,7 +246,7 @@ module logAnalytics 'br/public:avm/res/operational-insights/workspace:0.11.1' = 
     dataRetention: 30
   }
 }
- 
+
 module monitoring 'br/public:avm/res/insights/component:0.6.0' = {
   name: '${uniqueString(deployment().name, location)}-appinsights'
   scope: rg
@@ -239,6 +256,41 @@ module monitoring 'br/public:avm/res/insights/component:0.6.0' = {
     tags: tags
     workspaceResourceId: logAnalytics.outputs.resourceId
     disableLocalAuth: true
+  }
+}
+
+// Azure key-vault
+module vault 'br/public:avm/res/key-vault/vault:0.12.1' = if (addKeyVault) {
+  name: '${uniqueString(deployment().name, location)}-vault'
+  scope: rg
+  params: {
+    name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
+    enablePurgeProtection: false
+    publicNetworkAccess: vnetEnabled ? 'Disabled' : 'Enabled'
+    networkAcls: vnetEnabled
+      ? {
+          defaultAction: 'Deny'
+          bypass: 'AzureServices'
+          ipRules: empty(allowedIpAddressesNoEmptyString) ? [] : ipRules
+        }
+      : {
+          defaultAction: 'Allow'
+          bypass: 'AzureServices'
+          ipRules: empty(allowedIpAddressesNoEmptyString) ? [] : ipRules
+        }
+    enableSoftDelete: false
+  }
+}
+
+module vaultPrivateEndpoint 'app/vault-PrivateEndpoint.bicep' = if (vnetEnabled && addKeyVault) {
+  name: 'vaultPrivateEndpoint'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    virtualNetworkName: !empty(vNetName) ? vNetName : '${abbrs.networkVirtualNetworks}${resourceToken}'
+    subnetName: vnetEnabled ? serviceVirtualNetwork.outputs.peSubnetName : '' // Keep conditional check for safety, though module won't run if !vnetEnabled
+    resourceName: vault.outputs.name
   }
 }
 
