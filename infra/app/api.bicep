@@ -5,16 +5,16 @@ param tags object = {}
 param applicationInsightsName string = ''
 param appServicePlanId string
 param appSettings object = {}
-param runtimeName string 
-param runtimeVersion string 
+param runtimeName string
+param runtimeVersion string
 param serviceName string = 'api'
 param storageAccountName string
 param deploymentStorageContainerName string
 param virtualNetworkSubnetId string = ''
 param instanceMemoryMB int = 2048
 param maximumInstanceCount int = 100
-param identityId string = ''
-param identityClientId string = ''
+param UserAssignedManagedIdentityId string = ''
+param UserAssignedManagedIdentityClientId string = ''
 param enableBlob bool = true
 param enableQueue bool = false
 param enableTable bool = false
@@ -23,19 +23,40 @@ param enableFile bool = false
 @allowed(['SystemAssigned', 'UserAssigned'])
 param identityType string = 'UserAssigned'
 
-var applicationInsightsIdentity = 'ClientId=${identityClientId};Authorization=AAD'
+var applicationInsightsIdentity = identityType == 'UserAssigned'
+  ? 'ClientId=${UserAssignedManagedIdentityClientId};Authorization=AAD'
+  : 'Authorization=AAD'
 var kind = 'functionapp,linux'
 
 // Create base application settings
 var baseAppSettings = {
-  // Only include required credential settings unconditionally
-  AzureWebJobsStorage__credential: 'managedidentity'
-  AzureWebJobsStorage__clientId: identityClientId
-  
+  // // Only include required credential settings unconditionally
+  // AzureWebJobsStorage__credential: 'managedidentity'
+  // AzureWebJobsStorage__clientId: identityClientId
+
   // Application Insights settings are always included
   APPLICATIONINSIGHTS_AUTHENTICATION_STRING: applicationInsightsIdentity
   APPLICATIONINSIGHTS_CONNECTION_STRING: applicationInsights.properties.ConnectionString
 }
+
+var userManagedIdentityStorageAccountSettings = identityType == 'UserAssigned'
+  ? {
+      // Only include required credential settings unconditionally
+      AzureWebJobsStorage__credential: 'managedidentity'
+      AzureWebJobsStorage__clientId: UserAssignedManagedIdentityClientId
+    }
+  : {}
+
+var userAssignedIdentities = identityType == 'UserAssigned'
+  ? {
+      type: identityType
+      userAssignedIdentities: {
+        '${UserAssignedManagedIdentityId}': {}
+      }
+    }
+  : {
+      type: identityType
+    }
 
 // Dynamically build storage endpoint settings based on feature flags
 var blobSettings = enableBlob ? { AzureWebJobsStorage__blobServiceUri: stg.properties.primaryEndpoints.blob } : {}
@@ -50,7 +71,8 @@ var allAppSettings = union(
   queueSettings,
   tableSettings,
   fileSettings,
-  baseAppSettings
+  baseAppSettings,
+  userManagedIdentityStorageAccountSettings
 )
 
 resource stg 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
@@ -72,9 +94,11 @@ module api 'br/public:avm/res/web/site:0.15.1' = {
     serverFarmResourceId: appServicePlanId
     managedIdentities: {
       systemAssigned: identityType == 'SystemAssigned'
-      userAssignedResourceIds: [
-        '${identityId}'
-      ]
+      userAssignedResourceIds: identityType == 'SystemAssigned'
+        ? null
+        : [
+            '${UserAssignedManagedIdentityId}'
+          ]
     }
     functionAppConfig: {
       deployment: {
@@ -83,7 +107,7 @@ module api 'br/public:avm/res/web/site:0.15.1' = {
           value: '${stg.properties.primaryEndpoints.blob}${deploymentStorageContainerName}'
           authentication: {
             type: identityType == 'SystemAssigned' ? 'SystemAssignedIdentity' : 'UserAssignedIdentity'
-            userAssignedIdentityResourceId: identityType == 'UserAssigned' ? identityId : '' 
+            userAssignedIdentityResourceId: identityType == 'UserAssigned' ? UserAssignedManagedIdentityId : ''
           }
         }
       }
@@ -106,4 +130,6 @@ module api 'br/public:avm/res/web/site:0.15.1' = {
 
 output SERVICE_API_NAME string = api.outputs.name
 // Ensure output is always string, handle potential null from module output if SystemAssigned is not used
-output SERVICE_API_IDENTITY_PRINCIPAL_ID string = identityType == 'SystemAssigned' ? api.outputs.?systemAssignedMIPrincipalId ?? '' : ''
+output SERVICE_API_IDENTITY_PRINCIPAL_ID string = identityType == 'SystemAssigned'
+  ? api.outputs.?systemAssignedMIPrincipalId ?? ''
+  : ''
