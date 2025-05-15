@@ -54,7 +54,7 @@ param allowedIpAddresses array = []
 @description('List of the environment variables to create in the Azure functions service.')
 param appSettings object
 
-param vnetEnabled bool
+param vnetEnabled bool = true
 param addKeyVault bool = false
 param apiServiceName string = ''
 @allowed(['SystemAssigned', 'UserAssigned'])
@@ -205,7 +205,7 @@ module rbac 'app/rbac.bicep' = {
     enableQueue: storageEndpointConfig.enableQueue
     enableTable: storageEndpointConfig.enableTable
     allowUserIdentityPrincipal: storageEndpointConfig.allowUserIdentityPrincipal
-    keyVaultName: vault.outputs.name
+    keyVaultName: addKeyVault ? vault.outputs.name : ''
   }
 }
 

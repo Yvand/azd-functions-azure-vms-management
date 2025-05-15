@@ -11,14 +11,11 @@
     "resourceGroupName": {
       "value": "${AZURE_ENV_NAME}"
     },
-    "vnetEnabled": {
-      "value": "${VNET_ENABLED}"
-    },
     "apiServiceIdentityType": {
       "value": "${API_SERVICE_IDENTITY_TYPE}"
     },
     "addKeyVault": {
-      "value": "${addKeyVault}"
+      "value": "false"
     },
     "allowedIpAddresses": {
       "value": ["${ALLOWED_IP_ADDRESSES}"]
