@@ -137,8 +137,12 @@ module api './app/api.bicep' = {
     enableTable: storageEndpointConfig.enableTable
     deploymentStorageContainerName: deploymentStorageContainerName
     identityType: apiServiceIdentityType
-    UserAssignedManagedIdentityId: apiServiceIdentityType == 'UserAssigned' ? apiUserAssignedIdentity.outputs.resourceId : ''
-    UserAssignedManagedIdentityClientId: apiServiceIdentityType == 'UserAssigned' ? apiUserAssignedIdentity.outputs.clientId : ''
+    UserAssignedManagedIdentityId: apiServiceIdentityType == 'UserAssigned'
+      ? apiUserAssignedIdentity.outputs.resourceId
+      : ''
+    UserAssignedManagedIdentityClientId: apiServiceIdentityType == 'UserAssigned'
+      ? apiUserAssignedIdentity.outputs.clientId
+      : ''
     appSettings: appSettings
     virtualNetworkSubnetId: vnetEnabled ? serviceVirtualNetwork.outputs.appSubnetID : ''
   }
@@ -265,6 +269,8 @@ module vault 'br/public:avm/res/key-vault/vault:0.12.1' = if (addKeyVault) {
   scope: rg
   params: {
     name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
+    location: location
+    tags: tags
     enablePurgeProtection: false
     publicNetworkAccess: vnetEnabled ? 'Disabled' : 'Enabled'
     networkAcls: vnetEnabled

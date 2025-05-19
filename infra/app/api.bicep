@@ -122,6 +122,11 @@ module api 'br/public:avm/res/web/site:0.15.1' = {
     }
     siteConfig: {
       alwaysOn: false
+      cors: {
+        allowedOrigins: [
+          'https://portal.azure.com'
+        ]
+      }
     }
     virtualNetworkSubnetId: !empty(virtualNetworkSubnetId) ? virtualNetworkSubnetId : null
     appSettingsKeyValuePairs: allAppSettings
