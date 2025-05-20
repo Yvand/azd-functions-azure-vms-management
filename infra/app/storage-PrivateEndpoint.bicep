@@ -23,15 +23,15 @@ var tablePrivateDNSZoneName = 'privatelink.table.${environment().suffixes.storag
 
 // AVM module for Blob Private Endpoint with private DNS zone
 module blobPrivateEndpoint 'br/public:avm/res/network/private-endpoint:0.11.0' = if (enableBlob) {
-  name: 'blob-private-endpoint-deployment'
+  name: 'private-endpoint-blob-deployment'
   params: {
-    name: 'blob-private-endpoint'
+    name: 'private-endpoint-blob'
     location: location
     tags: tags
     subnetResourceId: '${vnet.id}/subnets/${subnetName}'
     privateLinkServiceConnections: [
       {
-        name: 'blobPrivateLinkConnection'
+        name: 'pl-blob'
         properties: {
           privateLinkServiceId: storageAccount.id
           groupIds: [

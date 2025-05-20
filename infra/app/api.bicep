@@ -21,7 +21,7 @@ param enableTable bool = false
 param enableFile bool = false
 
 @allowed(['SystemAssigned', 'UserAssigned'])
-param identityType string = 'UserAssigned'
+param identityType string
 
 var applicationInsightsIdentity = identityType == 'UserAssigned'
   ? 'ClientId=${UserAssignedManagedIdentityClientId};Authorization=AAD'
@@ -30,10 +30,6 @@ var kind = 'functionapp,linux'
 
 // Create base application settings
 var baseAppSettings = {
-  // // Only include required credential settings unconditionally
-  // AzureWebJobsStorage__credential: 'managedidentity'
-  // AzureWebJobsStorage__clientId: identityClientId
-
   // Application Insights settings are always included
   APPLICATIONINSIGHTS_AUTHENTICATION_STRING: applicationInsightsIdentity
   APPLICATIONINSIGHTS_CONNECTION_STRING: applicationInsights.properties.ConnectionString
@@ -41,22 +37,10 @@ var baseAppSettings = {
 
 var userManagedIdentityStorageAccountSettings = identityType == 'UserAssigned'
   ? {
-      // Only include required credential settings unconditionally
       AzureWebJobsStorage__credential: 'managedidentity'
       AzureWebJobsStorage__clientId: UserAssignedManagedIdentityClientId
     }
   : {}
-
-var userAssignedIdentities = identityType == 'UserAssigned'
-  ? {
-      type: identityType
-      userAssignedIdentities: {
-        '${UserAssignedManagedIdentityId}': {}
-      }
-    }
-  : {
-      type: identityType
-    }
 
 // Dynamically build storage endpoint settings based on feature flags
 var blobSettings = enableBlob ? { AzureWebJobsStorage__blobServiceUri: stg.properties.primaryEndpoints.blob } : {}

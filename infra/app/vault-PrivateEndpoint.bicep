@@ -46,15 +46,15 @@ module privateDnsZoneVaultDeployment 'br/public:avm/res/network/private-dns-zone
 
 // AVM module for Blob Private Endpoint with private DNS zone
 module vaultPrivateEndpoint 'br/public:avm/res/network/private-endpoint:0.11.0' = {
-  name: 'vault-private-endpoint-deployment'
+  name: 'private-endpoint-vault-deployment'
   params: {
-    name: 'vault-private-endpoint'
+    name: 'private-endpoint-vault'
     location: location
     tags: tags
     subnetResourceId: '${vnet.id}/subnets/${subnetName}'
     privateLinkServiceConnections: [
       {
-        name: 'vaultPrivateLinkConnection'
+        name: 'pl-vault'
         properties: {
           privateLinkServiceId: keyVaultResource.id
           groupIds: [
