@@ -22,7 +22,7 @@
     },
     "appSettings": {
       "value": {
-        "SubscriptionId": "${SubscriptionId}",
+        "SubscriptionId": "${AZURE_SUBSCRIPTION_ID}",
         "ResourceGroupNames": "${ResourceGroupNames}",
         "AllowedIpAddressPrefixes": "${AllowedIpAddressPrefixes}"
       }

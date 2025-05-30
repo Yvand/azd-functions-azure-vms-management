@@ -32,7 +32,7 @@ var kind = 'functionapp,linux'
 var baseAppSettings = {
   // Application Insights settings are always included
   APPLICATIONINSIGHTS_AUTHENTICATION_STRING: applicationInsightsIdentity
-  APPLICATIONINSIGHTS_CONNECTION_STRING: applicationInsights.properties.ConnectionString
+  // APPLICATIONINSIGHTS_CONNECTION_STRING: applicationInsights.properties.ConnectionString
 }
 
 var userManagedIdentityStorageAccountSettings = identityType == 'UserAssigned'
@@ -68,7 +68,7 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing
 }
 
 // Create a Flex Consumption Function App to host the API
-module api 'br/public:avm/res/web/site:0.15.1' = {
+module api 'br/public:avm/res/web/site:0.16.0' = {
   name: '${serviceName}-flex-consumption'
   params: {
     kind: kind
@@ -113,7 +113,16 @@ module api 'br/public:avm/res/web/site:0.15.1' = {
       }
     }
     virtualNetworkSubnetId: !empty(virtualNetworkSubnetId) ? virtualNetworkSubnetId : null
-    appSettingsKeyValuePairs: allAppSettings
+    
+    configs: [
+      {
+        name: 'appsettings'
+        applicationInsightResourceId: applicationInsights.id
+        // storageAccountResourceId: stg.id
+        // storageAccountUseIdentityAuthentication: true
+        properties: allAppSettings
+      }      
+    ]
   }
 }
 
