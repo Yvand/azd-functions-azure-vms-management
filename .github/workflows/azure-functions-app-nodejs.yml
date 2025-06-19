@@ -10,7 +10,7 @@ permissions:
 env:
   AZURE_FUNCTIONAPP_NAME: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'       # set this to the path to your function app project, defaults to the repository root
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
 
 jobs:
   build-and-deploy:

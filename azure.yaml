@@ -2,7 +2,7 @@
 
 name: functions-quickstart-typescript-azuresdk
 metadata:
-  template: Yvand/functions-quickstart-spo-azd@1.0.0.rc-7
+  template: Yvand/functions-quickstart-spo-azd@1.2.0
 services:
   api:
     project: .
