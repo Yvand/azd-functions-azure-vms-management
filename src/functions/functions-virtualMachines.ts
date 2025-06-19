@@ -125,7 +125,7 @@ app.http('virtualMachines-deallocate', { methods: ['POST'], authLevel: 'function
 app.http('virtualMachines-ensureDiskSku', { methods: ['POST'], authLevel: 'function', handler: ensureVirtualMachinesDiskSKU, route: 'vms/ensureDiskSku' });
 
 if (CommonConfig.IsLocalEnvironment === false) {
-    app.timer('Timer_ensureDiskSku', {
+    app.timer('Automation_ensureDiskSku', {
         schedule: "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
         runOnStartup: false,
         handler: async (timer: Timer, context: InvocationContext) => {

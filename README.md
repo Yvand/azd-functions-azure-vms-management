@@ -14,47 +14,43 @@ urlFragment: functions-quickstart-typescript-azuresdk
 
 # Azure Functions for Azure Compute SDK
 
-This quickstart is based on [this repository](https://github.com/Yvand/functions-quickstart-spo-azd). It uses Azure Developer command-line (azd) tools to deploy Azure Functions which can start / stop virtual machines. on your own Azure subscription.  
-The Azure functions use the [Flex Consumption plan](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan), are written in TypeScript and run in Node.js 20.  
+This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an Azure function app to manage virtual machines.
 
 ## Overview
 
-This project deploys HTTP-triggered functions to start / stop virtual machines.
+The function app uses the [Flex Consumption plan](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan) and is written in TypeScript.  
 
 ## Security of the Azure resources
 
 The resources deployed in Azure are configured with a high level of security: 
-- The functions service connects to the storage account and the key vault using a private endpoint.
-- No network access is allowed on the storage account and the key vault, except on specified IPs (configurable).
-- Authorization is configured using the functions service's managed identity (no access key or legacy access policy is enabled).
-- All the functions require a key to be called.
+- The function app connects to the storage account using a private endpoint.
+- No public network access is allowed on the storage account.
+- All the permissions are granted to the function app's managed identity (no secret, access key or legacy access policy is used).
+- All the functions require an app key to be called.
 
 ## Prerequisites
 
-+ [Node.js 20](https://www.nodejs.org/)
-+ [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local?pivots=programming-language-typescript#install-the-azure-functions-core-tools)
-+ [Azure Developer CLI (AZD)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-+ To use Visual Studio Code to run and debug locally:
-  + [Visual Studio Code](https://code.visualstudio.com/)
-  + [Azure Functions extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurefunctions)
+- [Node.js 22](https://www.nodejs.org/)
+- [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
+- [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 
 ## Initialize the local project
 
 You can initialize a project from this `azd` template in one of these ways:
 
-+ Use this `azd init` command from an empty local (root) folder:
+- Use this `azd init` command from an empty local (root) folder:
 
     ```shell
-    azd init --template Yvand/functions-quickstart-spo-azd
+    azd init --template Yvand/azd-functions-azure-management
     ```
 
     Supply an environment name, such as `functions-azuresdk-main` when prompted. In `azd`, the environment is used to maintain a unique deployment context for your app.
 
-+ Clone the GitHub template repository, and create an `azd` environment (in this example, `functions-azuresdk-main`):
+- Clone the GitHub template repository, and create an `azd` environment (in this example, `functions-azuresdk-main`):
 
     ```shell
-    git clone https://github.com/Yvand/functions-quickstart-spo-azd.git
-    cd functions-quickstart-spo-azd
+    git clone https://github.com/Yvand/azd-functions-azure-management.git
+    cd azd-functions-azure-management
     azd env new functions-azuresdk-main
     ```
 
@@ -68,15 +64,12 @@ You can initialize a project from this `azd` template in one of these ways:
       "Values": {
          "AzureWebJobsStorage": "UseDevelopmentStorage=true",
          "FUNCTIONS_WORKER_RUNTIME": "node",
-         "TenantPrefix": "YOUR_SHAREPOINT_TENANT_PREFIX",
-         "SiteRelativePath": "/sites/YOUR_SHAREPOINT_SITE_NAME"
+         "SubscriptionId": "YOUR_AZURE_SUBSCRIPTION_ID",
       }
    }
    ```
 
 1. Review the file `infra/main.parameters.json` to customize the parameters used for provisioning the resources in Azure. Review [this article](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/manage-environment-variables) to manage the azd's environment variables.
-
-   Important: Ensure the values for `TenantPrefix` and `SiteRelativePath` are identical between the files `local.settings.json` (used when running the functions locally) and `infra\main.parameters.json` (used to set the environment variables in Azure).
 
 1. Install the dependencies and build the functions app:
 
@@ -91,7 +84,7 @@ You can initialize a project from this `azd` template in one of these ways:
 
 # Grant permissions to the function app
 
-The function app will use its system-assigned managed identity to authenticate in the Azure subscription. In this section, we will create and assign a custom role definition to the function app's managed identity.
+The function app uses a managed identity to authenticate to Azure. In this section, we will create and assign a custom role definition to the function app's managed identity.
 
 ## Create a custom role definition
 
