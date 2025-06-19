@@ -11,12 +11,6 @@
     "resourceGroupName": {
       "value": "${AZURE_ENV_NAME}"
     },
-    "apiServiceIdentityType": {
-      "value": "${API_SERVICE_IDENTITY_TYPE}"
-    },
-    "addKeyVault": {
-      "value": "false"
-    },
     "allowedIpAddresses": {
       "value": ["${ALLOWED_IP_ADDRESSES}"]
     },
