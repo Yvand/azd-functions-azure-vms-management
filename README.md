@@ -1,6 +1,6 @@
 ---
-name: Azure Functions for Azure Compute SDK
-description: This quickstart uses azd CLI to deploy Azure Functions to manage your virtual machines running in Azure.
+name: Azure function app to manage virtual machines
+description: This template uses Azure Developer CLI (azd) to deploy an Azure function app to manage virtual machines running in Azure.
 page_type: sample
 languages:
 - azdeveloper
@@ -9,7 +9,7 @@ languages:
 - typescript
 products:
 - azure-functions
-urlFragment: functions-quickstart-typescript-azuresdk
+urlFragment: azd-functions-azure-vms-management
 ---
 
 # Azure Functions for Azure Compute SDK
@@ -41,7 +41,7 @@ You can initialize a project from this `azd` template in one of these ways:
 - Use this `azd init` command from an empty local (root) folder:
 
     ```shell
-    azd init --template Yvand/azd-functions-azure-management
+    azd init --template Yvand/azd-functions-azure-vms-management
     ```
 
     Supply an environment name, such as `functions-azuresdk-main` when prompted. In `azd`, the environment is used to maintain a unique deployment context for your app.
@@ -49,8 +49,8 @@ You can initialize a project from this `azd` template in one of these ways:
 - Clone the GitHub template repository, and create an `azd` environment (in this example, `functions-azuresdk-main`):
 
     ```shell
-    git clone https://github.com/Yvand/azd-functions-azure-management.git
-    cd azd-functions-azure-management
+    git clone https://github.com/Yvand/azd-functions-azure-vms-management.git
+    cd azd-functions-azure-vms-management
     azd env new functions-azuresdk-main
     ```
 
@@ -92,7 +92,7 @@ The script below creates a custom role definition with only the permissions stri
 
 ```shell
 az role definition create --role-definition '{
-    "Name": "Yvand/functions-quickstart-typescript-azuresdk",
+    "Name": "Yvand/azd-functions-azure-vms-management",
     "IsCustom": true,
     "Description": "Can start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
     "Actions": [
@@ -120,7 +120,7 @@ The script below assigns the custom role to the function app's managed identity,
 ```bash
 funcAppName="YOUR_FUNC_APP_NAME"
 funcAppPrincipalId=$(az ad sp list --filter "displayName eq '${funcAppName}' and servicePrincipalType eq 'ManagedIdentity'" --query "[0].id" -o tsv)
-customRoleDefinitionId=$(az role definition list --name "Yvand/functions-quickstart-typescript-azuresdk" --query "[0].id" -o tsv)
+customRoleDefinitionId=$(az role definition list --name "Yvand/azd-functions-azure-vms-management" --query "[0].id" -o tsv)
 subscriptionId=$(az account show --query id --output tsv)
 az role assignment create --assignee $funcAppPrincipalId --role $customRoleDefinitionId --scope "/subscriptions/${subscriptionId}"
 ```
