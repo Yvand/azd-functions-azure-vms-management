@@ -1,3 +1,4 @@
+<!--
 ---
 name: Azure function app to manage virtual machines
 description: This template uses Azure Developer CLI (azd) to deploy an Azure function app to manage virtual machines running in Azure.
@@ -11,8 +12,9 @@ products:
 - azure-functions
 urlFragment: azd-functions-azure-vms-management
 ---
+-->
 
-# Azure Functions for Azure Compute SDK
+# Azure function app to manage virtual machines
 
 This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an Azure function app to manage virtual machines.
 

@@ -151,10 +151,12 @@ app.http('virtualMachines-test', {
             const client = new ResourceManagementClient(getAzureCredential(), CommonConfig.SubscriptionId);
             let groups: string[] = [];
             for await (const group of client.resourceGroups.list({
-                filter: CommonConfig.EnsureDiskSKUTagFilter
+                // filter: CommonConfig.EnsureDiskSKUTagFilter
             })) {
                 groups.push(group.name || "");
-                await ensureVirtualMachinesDiskSKUInternal(context, group.name || "", null, "StandardSSD_LRS", true);
+                const vms: VirtualMachine[] = await virtualMachines_list(group.name || "");
+                const vmNames = vms.filter(vm => vm.tags && vm.tags['Automation'] === 'vm-disk').map(vm => vm.name || "").join(',');
+                await ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, "StandardSSD_LRS", true);
             }
             return { status: 200, jsonBody: groups };
         }
