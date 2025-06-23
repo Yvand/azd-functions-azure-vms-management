@@ -45,7 +45,7 @@ export async function startVirtualMachines(request: HttpRequest, context: Invoca
         vmNames.forEach(async (vm) => {
             promises.push(virtualMachines_start(g, vm, wait));
         });
-        const result: any[] = await Promise.all(promises);
+        const result: any[] = await Promise.allSettled(promises);
         logInfo(context, `Started the following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
         return { status: 200, jsonBody: result };
     }
@@ -67,7 +67,7 @@ export async function deallocateVirtualMachines(request: HttpRequest, context: I
         vmNames.forEach(async (vm) => {
             promises.push(virtualMachines_deallocate(g, vm, wait));
         });
-        const result: any[] = await Promise.all(promises);
+        const result: any[] = await Promise.allSettled(promises);
         logInfo(context, `Deallocated the following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
         return { status: 200, jsonBody: result };
     }
@@ -82,7 +82,7 @@ export async function ensureVirtualMachinesDiskSKU(request: HttpRequest, context
         const g = request.query.get('g');
         const vmsParam = request.query.get('vms');
         const wait = request.query.has('nowait') ? false : true;
-        const skuName = request.query.get('sku') || CommonConfig.EnsureDiskSKUName;
+        const skuName = request.query.get('sku') || CommonConfig.AutomationDiskSKU;
         if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
         const result: any[] = await ensureVirtualMachinesDiskSKUInternal(context, g, vmsParam, skuName, wait);
@@ -100,7 +100,7 @@ export async function ensureVirtualMachinesDiskSKUInternal(context: InvocationCo
     vmNames.forEach(async (vm) => {
         promises.push(disk_updateOsDiskSku(g, vm, skuName, wait));
     });
-    const result: any[] = await Promise.all(promises);
+    const result: any[] = await Promise.allSettled(promises);
     logInfo(context, `Updated the OS disk to SKU '${skuName}' for the following virtual machines in resource group '${g}': '${vmNames.join(', ')}'`);
     return result;
 };
@@ -129,18 +129,20 @@ if (CommonConfig.IsLocalEnvironment === false) {
         schedule: "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
         runOnStartup: false,
         handler: async (timer: Timer, context: InvocationContext) => {
-            const skuName = CommonConfig.EnsureDiskSKUName;
+            let promises: Promise<any>[] = [];
+            const skuName = CommonConfig.AutomationDiskSKU;
             const client = new ResourceManagementClient(getAzureCredential(), CommonConfig.SubscriptionId);
             for await (const group of client.resourceGroups.list({
-                filter: CommonConfig.EnsureDiskSKUTagFilter
+                //filter: "tagName eq 'Automation' and tagValue eq 'vm-disk'"
             })) {
-                try {
-                    await ensureVirtualMachinesDiskSKUInternal(context, group.name || "", '*', skuName, true);
-                }
-                catch (error: unknown) {
-                    logError(context, error, `Could not update the OS disk to SKU '${skuName}' for the virtual machines in resource group '${group.name || ""}'.`);
+                const vms: VirtualMachine[] = await virtualMachines_list(group.name || "");
+                const vmNames = vms.filter(vm => vm.tags && vm.tags[CommonConfig.AutomationTagName] === CommonConfig.AutomationDiskSKUTagValue && vm.name).map(vm => vm.name).join(',');
+                if (vmNames.length > 0) {
+                    //await ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, skuName, true);
+                    promises.push(ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, skuName, true));
                 }
             }
+            const result: PromiseSettledResult<any>[] = await Promise.allSettled(promises);
         }
     });
 }
@@ -148,17 +150,21 @@ if (CommonConfig.IsLocalEnvironment === false) {
 app.http('virtualMachines-test', {
     methods: ['GET'], authLevel: 'function', handler: async function listVirtualMachines(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
         try {
+            let promises: Promise<any>[] = [];
+            const skuName = CommonConfig.AutomationDiskSKU;
             const client = new ResourceManagementClient(getAzureCredential(), CommonConfig.SubscriptionId);
-            let groups: string[] = [];
             for await (const group of client.resourceGroups.list({
-                // filter: CommonConfig.EnsureDiskSKUTagFilter
+                //filter: "tagName eq 'Automation' and tagValue eq 'vm-disk'"
             })) {
-                groups.push(group.name || "");
                 const vms: VirtualMachine[] = await virtualMachines_list(group.name || "");
-                const vmNames = vms.filter(vm => vm.tags && vm.tags['Automation'] === 'vm-disk').map(vm => vm.name || "").join(',');
-                await ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, "StandardSSD_LRS", true);
+                const vmNames = vms.filter(vm => vm.tags && vm.tags[CommonConfig.AutomationTagName] === CommonConfig.AutomationDiskSKUTagValue && vm.name).map(vm => vm.name).join(',');
+                if (vmNames.length > 0) {
+                    //await ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, skuName, true);
+                    promises.push(ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, skuName, true));
+                }
             }
-            return { status: 200, jsonBody: groups };
+            const result: PromiseSettledResult<any>[] = await Promise.allSettled(promises);
+            return { status: 200, jsonBody: result };
         }
         catch (error: unknown) {
             const errorDetails = logError(context, error, context.functionName);
