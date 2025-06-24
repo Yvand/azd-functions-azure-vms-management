@@ -77,7 +77,7 @@ export async function deallocateVirtualMachines(request: HttpRequest, context: I
     }
 };
 
-export async function ensureVirtualMachinesDiskSKU(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+async function setVirtualMachinesDiskSKU(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
     try {
         const g = request.query.get('g');
         const vmsParam = request.query.get('vms');
@@ -85,7 +85,7 @@ export async function ensureVirtualMachinesDiskSKU(request: HttpRequest, context
         const skuName = request.query.get('sku') || CommonConfig.AutomationDiskSKU;
         if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
-        const result: any[] = await ensureVirtualMachinesDiskSKUInternal(context, g, vmsParam, skuName, wait);
+        const result: any[] = await setVirtualMachinesDiskSKUForGroup(context, g, vmsParam, skuName, wait);
         return { status: 200, jsonBody: result };
     }
     catch (error: unknown) {
@@ -94,14 +94,21 @@ export async function ensureVirtualMachinesDiskSKU(request: HttpRequest, context
     }
 };
 
-export async function ensureVirtualMachinesDiskSKUInternal(context: InvocationContext, g: string, vmNamesParam: string | null, skuName: string, wait: boolean): Promise<any[]> {
+async function setVirtualMachinesDiskSKUForGroup(context: InvocationContext, g: string, vmNamesParam: string | null, skuName: string, wait: boolean): Promise<any[]> {
     const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmNamesParam);
     let promises: Promise<any>[] = [];
     vmNames.forEach(async (vm) => {
         promises.push(disk_updateOsDiskSku(g, vm, skuName, wait));
     });
-    const result: any[] = await Promise.allSettled(promises);
-    logInfo(context, `Updated the OS disk to SKU '${skuName}' for the following virtual machines in resource group '${g}': '${vmNames.join(', ')}'`);
+    const result: PromiseSettledResult<any>[] = await Promise.allSettled(promises);
+    const vmsUpdateFailed: any[] = result.filter((res) => res.status === 'rejected');
+    if (vmsUpdateFailed.length > 0) {
+        logInfo(context, `${vmsUpdateFailed.length} VMs encountered an error while updating their OS disk to SKU '${skuName}' in resource group '${g}': ${vmsUpdateFailed.map((res) => res.reason.vmName).join(', ')}`, LogLevel.Error);
+    }
+    const vmsUpdateSuccess: any[] = result.filter((res) => res.status === 'fulfilled');
+    if (vmsUpdateSuccess.length > 0) {
+        logInfo(context, `Updated the OS disk to SKU '${skuName}' for the following virtual machines in resource group '${g}': ${vmsUpdateSuccess.map((res) => res.value.vmName).join(', ')}`);
+    }
     return result;
 };
 
@@ -119,56 +126,43 @@ const getVMNamesFromFuncParameter = async (g: string, vmsParam: string | null) =
     return vmNames;
 }
 
+const ensureDiskSku = async (context: InvocationContext, skuName: string): Promise<any> => {
+    try {
+        let promises: Promise<any>[] = [];
+        const client = new ResourceManagementClient(getAzureCredential(), CommonConfig.SubscriptionId);
+        for await (const group of client.resourceGroups.list({
+            //filter: "tagName eq 'Automation' and tagValue eq 'vm-disk'"
+        })) {
+            const vms: VirtualMachine[] = await virtualMachines_list(group.name || "");
+            const vmNames = vms.filter(vm => vm.tags && vm.tags[CommonConfig.AutomationTagName] === CommonConfig.AutomationDiskSKUTagValue && vm.name).map(vm => vm.name).join(',');
+            if (vmNames.length > 0) {
+                promises.push(setVirtualMachinesDiskSKUForGroup(context, group.name || "", vmNames, skuName, true));
+            }
+        }
+        const result: PromiseSettledResult<any>[] = await Promise.allSettled(promises);
+        return { status: 200, jsonBody: result.map(res => res.status === 'fulfilled' ? res.value : res.reason) };
+    }
+    catch (error: unknown) {
+        const errorDetails = logError(context, error, context.functionName);
+        return { status: errorDetails.httpStatus, jsonBody: errorDetails };
+    }
+}
+
 app.http('virtualMachines-list', { methods: ['GET'], authLevel: 'function', handler: listVirtualMachines, route: 'vms/list' });
 app.http('virtualMachines-start', { methods: ['POST'], authLevel: 'function', handler: startVirtualMachines, route: 'vms/start' });
 app.http('virtualMachines-deallocate', { methods: ['POST'], authLevel: 'function', handler: deallocateVirtualMachines, route: 'vms/deallocate' });
-app.http('virtualMachines-ensureDiskSku', { methods: ['POST'], authLevel: 'function', handler: ensureVirtualMachinesDiskSKU, route: 'vms/ensureDiskSku' });
+app.http('virtualMachines-setDiskSku', { methods: ['POST'], authLevel: 'function', handler: setVirtualMachinesDiskSKU, route: 'vms/setDiskSku' });
+app.http('virtualMachines-ensureDiskSku', {
+    methods: ['POST'], authLevel: 'function',
+    handler: async function ensureVirtualMachinesDiskSKU(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+        return await ensureDiskSku(context, request.query.get('sku') || CommonConfig.AutomationDiskSKU);
+    }, route: 'vms/ensureDiskSku'
+});
 
 if (CommonConfig.IsLocalEnvironment === false) {
     app.timer('Automation_ensureDiskSku', {
         schedule: "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
         runOnStartup: false,
-        handler: async (timer: Timer, context: InvocationContext) => {
-            let promises: Promise<any>[] = [];
-            const skuName = CommonConfig.AutomationDiskSKU;
-            const client = new ResourceManagementClient(getAzureCredential(), CommonConfig.SubscriptionId);
-            for await (const group of client.resourceGroups.list({
-                //filter: "tagName eq 'Automation' and tagValue eq 'vm-disk'"
-            })) {
-                const vms: VirtualMachine[] = await virtualMachines_list(group.name || "");
-                const vmNames = vms.filter(vm => vm.tags && vm.tags[CommonConfig.AutomationTagName] === CommonConfig.AutomationDiskSKUTagValue && vm.name).map(vm => vm.name).join(',');
-                if (vmNames.length > 0) {
-                    //await ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, skuName, true);
-                    promises.push(ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, skuName, true));
-                }
-            }
-            const result: PromiseSettledResult<any>[] = await Promise.allSettled(promises);
-        }
+        handler: async (timer: Timer, context: InvocationContext) => await ensureDiskSku(context, CommonConfig.AutomationDiskSKU)
     });
 }
-
-app.http('virtualMachines-test', {
-    methods: ['GET'], authLevel: 'function', handler: async function listVirtualMachines(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-        try {
-            let promises: Promise<any>[] = [];
-            const skuName = CommonConfig.AutomationDiskSKU;
-            const client = new ResourceManagementClient(getAzureCredential(), CommonConfig.SubscriptionId);
-            for await (const group of client.resourceGroups.list({
-                //filter: "tagName eq 'Automation' and tagValue eq 'vm-disk'"
-            })) {
-                const vms: VirtualMachine[] = await virtualMachines_list(group.name || "");
-                const vmNames = vms.filter(vm => vm.tags && vm.tags[CommonConfig.AutomationTagName] === CommonConfig.AutomationDiskSKUTagValue && vm.name).map(vm => vm.name).join(',');
-                if (vmNames.length > 0) {
-                    //await ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, skuName, true);
-                    promises.push(ensureVirtualMachinesDiskSKUInternal(context, group.name || "", vmNames, skuName, true));
-                }
-            }
-            const result: PromiseSettledResult<any>[] = await Promise.allSettled(promises);
-            return { status: 200, jsonBody: result };
-        }
-        catch (error: unknown) {
-            const errorDetails = logError(context, error, context.functionName);
-            return { status: errorDetails.httpStatus, jsonBody: errorDetails };
-        }
-    }, route: 'vms/test'
-});

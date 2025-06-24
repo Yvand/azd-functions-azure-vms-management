@@ -106,6 +106,9 @@ export async function disk_updateOsDiskSku(g: string, vmName: string, skuName: s
     catch (error: unknown) {
         result.operationStatus = "failed";
         result.error = error;
+        return new Promise((resolve, reject) => {
+            reject(result);
+        });
     }
     return result;
 }
