@@ -11,6 +11,9 @@
     "resourceGroupName": {
       "value": "${AZURE_ENV_NAME}"
     },
+    "customRoleDefinitionName" : {
+      "value": "Yvand/azd-functions-azure-vms-management"
+    },
     "allowedIpAddresses": {
       "value": ["${ALLOWED_IP_ADDRESSES}"]
     },

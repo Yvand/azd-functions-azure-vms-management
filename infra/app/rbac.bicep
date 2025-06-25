@@ -7,6 +7,8 @@ param allowUserIdentityPrincipal bool = false // Flag to enable user identity ro
 param enableBlob bool = true
 param enableQueue bool = false
 param enableTable bool = false
+param functionAppName string
+param customRoleDefinitionId string
 
 // Define Role Definition IDs internally
 var storageRoleDefinitionId = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b' //Storage Blob Data Owner role
@@ -26,6 +28,10 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!empty(keyVaultName)) {
   name: keyVaultName
+}
+
+resource functionApp 'Microsoft.Web/sites@2024-11-01' existing = {
+  name: functionAppName
 }
 
 // Role assignment for Storage Account (Blob) - Managed Identity
@@ -135,5 +141,16 @@ resource vaultRoleAssignment_User 'Microsoft.Authorization/roleAssignments@2022-
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', keyVaultAdministratorRoleDefinitionId)
     principalId: userIdentityPrincipalId
     principalType: 'User'
+  }
+}
+
+// Role assignment for the custom role definition on the Function App - Managed Identity
+resource functionAppCustomRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(functionApp.id, customRoleDefinitionId)
+  scope: functionApp
+  properties: {
+    roleDefinitionId: customRoleDefinitionId
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
   }
 }

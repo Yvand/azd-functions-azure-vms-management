@@ -69,6 +69,7 @@ param vNetName string = ''
 param keyVaultName string = ''
 @description('Id of the user identity to be used for testing and debugging. This is not required in production. Leave empty if not needed.')
 param principalId string = deployer().objectId
+param customRoleDefinitionName string = ''
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -210,6 +211,8 @@ module rbac 'app/rbac.bicep' = {
     enableTable: storageEndpointConfig.enableTable
     allowUserIdentityPrincipal: storageEndpointConfig.allowUserIdentityPrincipal
     keyVaultName: addKeyVault ? vault.outputs.name : ''
+    functionAppName: functionAppName
+    customRoleDefinitionId: customRoleDefinition.outputs.customRoleDefinitionId
   }
 }
 
@@ -297,6 +300,13 @@ module vaultPrivateEndpoint 'app/vault-PrivateEndpoint.bicep' = if (vnetEnabled 
     virtualNetworkName: !empty(vNetName) ? vNetName : '${abbrs.networkVirtualNetworks}${resourceToken}'
     subnetName: vnetEnabled ? serviceVirtualNetwork.outputs.peSubnetName : '' // Keep conditional check for safety, though module won't run if !vnetEnabled
     resourceName: vault.outputs.name
+  }
+}
+
+module customRoleDefinition 'app/customRoleDefinition.bicep' = {
+  name: 'customRoleDefinition'
+  params: {
+    customRoleDefinitionName: !empty(customRoleDefinitionName) ? customRoleDefinitionName : 'customRoleDef-${resourceToken}'
   }
 }
 
