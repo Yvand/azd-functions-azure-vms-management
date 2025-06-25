@@ -17,7 +17,8 @@
     "appSettings": {
       "value": {
         "SubscriptionId": "${AZURE_SUBSCRIPTION_ID}",
-        "AllowedIpAddressPrefixes": "${AllowedIpAddressPrefixes}"
+        "AllowedIpAddressPrefixes": "${AllowedIpAddressPrefixes}",
+        "AutomationDiskSKUEnabled": "true"
       }
     }
   }

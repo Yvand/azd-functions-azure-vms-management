@@ -97,9 +97,10 @@ The script below creates a custom role definition with only the permissions stri
 az role definition create --role-definition '{
     "Name": "Yvand/azd-functions-azure-vms-management",
     "IsCustom": true,
-    "Description": "Can start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
+    "Description": "Can list resource groups, start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
     "Actions": [
-        "Microsoft.Compute/*/read",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Compute/virtualMachines/read",
         "Microsoft.Compute/virtualMachines/start/action",
         "Microsoft.Compute/virtualMachines/restart/action",
         "Microsoft.Compute/virtualMachines/deallocate/action",
@@ -191,32 +192,6 @@ curl -X POST "http://localhost:7071/api/jits/delete?g=${resourceGroup}${policyNa
 
 When the functions run in your local environment, the logging goes to the console.  
 When the functions run in Azure, the logging goes to the Application Insights resource configured in the app service.  
-
-### KQL queries for Application Insights
-
-The KQL query below shows the entries from all the functions, and filters out the logging from the infrastructure:
-
-```kql
-traces 
-| where isnotempty(operation_Name)
-| project timestamp, operation_Name, severityLevel, message
-| order by timestamp desc
-```
-
-The KQL query below does the following:
-
-- Includes only the entries from the function `webhooks/service` (which receives the notifications from SharePoint)
-- Parses the `message` as a json document (which is how this project writes the messages)
-- Includes only the entries that were successfully parsed (excludes those from the infrastructure)
-
-```kql
-traces 
-| where operation_Name contains "webhooks-service"
-| extend jsonMessage = parse_json(message)
-| where isnotempty(jsonMessage.['message'])
-| project timestamp, operation_Name, severityLevel, jsonMessage.['message'], jsonMessage.['error']
-| order by timestamp desc
-```
 
 ## Cleanup the resources in Azure
 
