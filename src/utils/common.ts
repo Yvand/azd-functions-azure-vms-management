@@ -6,6 +6,7 @@ export const CommonConfig = {
     SubscriptionId: process.env.SubscriptionId || "",
     AllowedIpAddressPrefixes: process.env.AllowedIpAddressPrefixes?.split(',') || [""],
     AutomationTagName: process.env.AutomationTagName || "Automation",
+    AutomationDiskSKUEnabled: process.env.AutomationDiskSKUEnabled == "true" ? true : false, // Default is false
     AutomationDiskSkuSchedule: process.env.AutomationDiskSkuSchedule || "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
     AutomationDiskSKUTagValue: process.env.AutomationDiskSKUTagValue || "vm-disk",
     AutomationDiskSKUName: process.env.AutomationDiskSKUName || "StandardSSD_LRS",

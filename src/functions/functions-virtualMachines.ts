@@ -179,7 +179,7 @@ app.http('virtualMachines-ensureDiskSku', {
     }, route: 'vms/ensureDiskSku'
 });
 
-if (CommonConfig.IsLocalEnvironment === false) {
+if (CommonConfig.IsLocalEnvironment === false && CommonConfig.AutomationDiskSKUEnabled) {
     app.timer('Automation_ensureDiskSku', {
         schedule: CommonConfig.AutomationDiskSkuSchedule,
         runOnStartup: false,
