@@ -21,6 +21,7 @@ This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an 
 ## Overview
 
 The function app uses the [Flex Consumption plan](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan) and is written in TypeScript.  
+It contains multiple HTTP functions, and timer functions to automate some actions.
 
 ## Security of the Azure resources
 
@@ -141,15 +142,15 @@ It takes parameters from a .env file on the same folder. You can create it based
 Below is a sample script in Bash that calls the functions in Azure using `curl`:
 
 ```bash
-# Edit those variables to fit your app function
+# Edit those variables to match your function app
 funchost="YOUR_FUNC_APP_NAME"
 code="YOUR_HOST_KEY"
 resourceGroup="YOUR_RESOURCE_GROUP"
 
 # VMs
-vmsParameter="&vms=VMNAME1,VMNAME2"
+vmsParameter="&vms=VMNAME1,VMNAME2" # Optional, if missing, action applies to all VMs in the resource group
 curl "https://${funchost}.azurewebsites.net/api/vms/list?g=${resourceGroup}"
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/updateOsDiskSku?g=${resourceGroup}${vmsParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/setDiskSku?g=${resourceGroup}${vmsParameter}"
 curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?g=${resourceGroup}${vmsParameter}"
 curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?g=${resourceGroup}${vmsParameter}}&nowait"
 
@@ -166,13 +167,13 @@ curl -X POST "https://${funchost}.azurewebsites.net/api/jits/delete?g=${resource
 The same script, which calls the functions when they run in your local environment:
 
 ```bash
-# Edit those variables to fit your app function
+# Edit those variables to match your function app
 resourceGroup="YOUR_RESOURCE_GROUP"
 
 # VMs
-vmsParameter="&vms=VMNAME1,VMNAME2"
+vmsParameter="&vms=VMNAME1,VMNAME2" # Optional, if missing, action applies to all VMs in the resource group
 curl "http://localhost:7071/api/vms/list?g=${resourceGroup}"
-curl -X POST "http://localhost:7071/api/vms/updateOsDiskSku?g=${resourceGroup}${vmsParameter}"
+curl -X POST "http://localhost:7071/api/vms/setDiskSku?g=${resourceGroup}${vmsParameter}"
 curl -X POST "http://localhost:7071/api/vms/start?g=${resourceGroup}${vmsParameter}"
 curl -X POST "http://localhost:7071/api/vms/deallocate?g=${resourceGroup}${vmsParameter}}&nowait"
 
@@ -216,10 +217,6 @@ traces
 | project timestamp, operation_Name, severityLevel, jsonMessage.['message'], jsonMessage.['error']
 | order by timestamp desc
 ```
-
-## Known issues
-
-Azure Functions Flex Consumption plan is currently in preview, be aware about its [current limitations and issues](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan#considerations).
 
 ## Cleanup the resources in Azure
 

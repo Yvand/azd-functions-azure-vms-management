@@ -47,7 +47,7 @@ export async function startVirtualMachines(request: HttpRequest, context: Invoca
         });
         const result: any[] = await Promise.allSettled(promises);
         logInfo(context, `Started the following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
-        return { status: 200, jsonBody: result };
+        return { status: 200, jsonBody: result.map(res => res.status === 'fulfilled' ? res.value : res.reason) };
     }
     catch (error: unknown) {
         const errorDetails = logError(context, error, context.functionName);
@@ -115,7 +115,7 @@ async function setVirtualMachinesDiskSKU(request: HttpRequest, context: Invocati
         const g = request.query.get('g');
         const vmsParam = request.query.get('vms');
         const wait = request.query.has('nowait') ? false : true;
-        const skuName = request.query.get('sku') || CommonConfig.AutomationDiskSKU;
+        const skuName = request.query.get('sku') || CommonConfig.AutomationDiskSKUName;
         if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
         const result: any[] = await setVirtualMachinesDiskSKUForGroup(context, g, vmsParam, skuName, wait);
@@ -151,7 +151,7 @@ async function setVirtualMachinesDiskSKUForGroup(context: InvocationContext, g: 
     // if (vmsUpdateSuccess.length > 0) {
     //     logInfo(context, `Updated the OS disk to SKU '${skuName}' for the following virtual machines in resource group '${g}': ${vmsUpdateSuccess.map((res) => res.value.virtualMachineName).join(', ')}`);
     // }
-    return result;
+    return result.map(res => res.status === 'fulfilled' ? res.value : res.reason);
 };
 
 const getVMNamesFromFuncParameter = async (g: string, vmsParam: string | null) => {
@@ -175,14 +175,14 @@ app.http('virtualMachines-setDiskSku', { methods: ['POST'], authLevel: 'function
 app.http('virtualMachines-ensureDiskSku', {
     methods: ['POST'], authLevel: 'function',
     handler: async function ensureVirtualMachinesDiskSKU(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-        return await ensureVirtualMachinesDiskSku(context, request.query.get('sku') || CommonConfig.AutomationDiskSKU);
+        return await ensureVirtualMachinesDiskSku(context, request.query.get('sku') || CommonConfig.AutomationDiskSKUName);
     }, route: 'vms/ensureDiskSku'
 });
 
 if (CommonConfig.IsLocalEnvironment === false) {
     app.timer('Automation_ensureDiskSku', {
-        schedule: "0 30 6 * * 1-5", // At 6h30 UTC every weekday - https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-typescript#ncrontab-examples
+        schedule: CommonConfig.AutomationDiskSkuSchedule,
         runOnStartup: false,
-        handler: async (timer: Timer, context: InvocationContext) => await ensureVirtualMachinesDiskSku(context, CommonConfig.AutomationDiskSKU)
+        handler: async (timer: Timer, context: InvocationContext) => await ensureVirtualMachinesDiskSku(context, CommonConfig.AutomationDiskSKUName)
     });
 }
