@@ -211,8 +211,6 @@ module rbac 'app/rbac.bicep' = {
     enableTable: storageEndpointConfig.enableTable
     allowUserIdentityPrincipal: storageEndpointConfig.allowUserIdentityPrincipal
     keyVaultName: addKeyVault ? vault.outputs.name : ''
-    functionAppName: functionAppName
-    customRoleDefinitionId: customRoleDefinition.outputs.customRoleDefinitionId
   }
 }
 
@@ -303,9 +301,11 @@ module vaultPrivateEndpoint 'app/vault-PrivateEndpoint.bicep' = if (vnetEnabled 
   }
 }
 
-module customRoleDefinition 'app/customRoleDefinition.bicep' = {
+module customRoleDefinition 'app/permissions.bicep' = {
   name: 'customRoleDefinition'
   params: {
+    functionAppName: api.outputs.SERVICE_API_NAME
+    resourceGroupName: rg.name
     customRoleDefinitionName: !empty(customRoleDefinitionName) ? customRoleDefinitionName : 'customRoleDef-${resourceToken}'
   }
 }
@@ -315,3 +315,4 @@ output APPLICATIONINSIGHTS_CONNECTION_STRING string = monitoring.outputs.connect
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
 output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
+output CUSTOM_ROLE_DEFINITION_NAME string = customRoleDefinition.outputs.customRoleDefinitionName

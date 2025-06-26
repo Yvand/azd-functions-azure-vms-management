@@ -85,49 +85,26 @@ You can initialize a project from this `azd` template in one of these ways:
 
 1. The functions can also be run locally by executing command `npm run start`.
 
-# Grant permissions to the function app
+## Permissions granted to the function app
 
-The function app uses a managed identity to authenticate to Azure. In this section, we will create and assign a custom role definition to the function app's managed identity.
+The function app uses its managed identity to authenticate to Azure. To act on the resources, a custom role definition with the following permissions is created when deplying the resources, and assigned to the function app's managed identity:
 
-## Create a custom role definition
-
-The script below creates a custom role definition with only the permissions strictly required for the function app to work correctly:
-
-```shell
-az role definition create --role-definition '{
-    "Name": "Yvand/azd-functions-azure-vms-management",
-    "IsCustom": true,
-    "Description": "Can list resource groups, start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
-    "Actions": [
-        "Microsoft.Resources/subscriptions/resourceGroups/read",
-        "Microsoft.Compute/virtualMachines/read",
-        "Microsoft.Compute/virtualMachines/start/action",
-        "Microsoft.Compute/virtualMachines/restart/action",
-        "Microsoft.Compute/virtualMachines/deallocate/action",
-        "Microsoft.Compute/disks/write",
-        "Microsoft.Security/locations/jitNetworkAccessPolicies/read",
-        "Microsoft.Security/locations/jitNetworkAccessPolicies/write",
-        "Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action"
-    ],
-    "NotActions": [
-    ],
-    "AssignableScopes": [
-        "/subscriptions/${subscriptionId}"
-    ]
-}'
+```
+"Microsoft.Resources/subscriptions/resourceGroups/read",
+"Microsoft.Compute/virtualMachines/read",
+"Microsoft.Compute/virtualMachines/start/action",
+"Microsoft.Compute/virtualMachines/restart/action",
+"Microsoft.Compute/virtualMachines/deallocate/action",
+"Microsoft.Compute/disks/write",
+"Microsoft.Security/locations/jitNetworkAccessPolicies/read",
+"Microsoft.Security/locations/jitNetworkAccessPolicies/write",
+"Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action"
 ```
 
-## Assign the custom role to the function app's managed identity
-
-The script below assigns the custom role to the function app's managed identity, in the whole subscription:
-
-```bash
-funcAppName="YOUR_FUNC_APP_NAME"
-funcAppPrincipalId=$(az ad sp list --filter "displayName eq '${funcAppName}' and servicePrincipalType eq 'ManagedIdentity'" --query "[0].id" -o tsv)
-customRoleDefinitionId=$(az role definition list --name "Yvand/azd-functions-azure-vms-management" --query "[0].id" -o tsv)
-subscriptionId=$(az account show --query id --output tsv)
-az role assignment create --assignee $funcAppPrincipalId --role $customRoleDefinitionId --scope "/subscriptions/${subscriptionId}"
-```
+> **Warning**
+> Deleting resources using the command `azd down` does NOT delete the custom role definition, it must be deleted manually by runnint this command:
+> `az role definition delete --name "customRoleDef-XXXX"`
+> You can find the custom role definition's name in the output of the azd environment
 
 ## Call the functions
 
