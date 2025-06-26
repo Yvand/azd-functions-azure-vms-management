@@ -87,22 +87,22 @@ You can initialize a project from this `azd` template in one of these ways:
 
 ## Permissions granted to the function app
 
-The function app uses its managed identity to authenticate to Azure. To act on the resources, a custom role definition with the following permissions is created when deplying the resources, and assigned to the function app's managed identity:
+The function app uses its managed identity to authenticate to Azure. To grant it only the permissions it truly needs, a [custom role definition](infra/app/permissions.bicep#L7) is created and assigned to the function app's managed identity, with the following permissions:
 
-```
-"Microsoft.Resources/subscriptions/resourceGroups/read",
-"Microsoft.Compute/virtualMachines/read",
-"Microsoft.Compute/virtualMachines/start/action",
-"Microsoft.Compute/virtualMachines/restart/action",
-"Microsoft.Compute/virtualMachines/deallocate/action",
-"Microsoft.Compute/disks/write",
-"Microsoft.Security/locations/jitNetworkAccessPolicies/read",
-"Microsoft.Security/locations/jitNetworkAccessPolicies/write",
-"Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action"
+```bicep
+'Microsoft.Resources/subscriptions/resourceGroups/read'
+'Microsoft.Compute/virtualMachines/read'
+'Microsoft.Compute/virtualMachines/start/action'
+'Microsoft.Compute/virtualMachines/restart/action'
+'Microsoft.Compute/virtualMachines/deallocate/action'
+'Microsoft.Compute/disks/write'
+'Microsoft.Security/locations/jitNetworkAccessPolicies/read'
+'Microsoft.Security/locations/jitNetworkAccessPolicies/write'
+'Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action'
 ```
 
 > [!WARNING]
-> Deleting the resources using the command `azd down` does not delete the custom role definition, it must be deleted manually as [explained here](#cleanup-the-resources-in-azure)
+> Deleting the resources using the command `azd down` won't delete the custom role definition, it will need to be deleted manually as [explained here](#cleanup-the-resources-in-azure).
 
 ## Call the functions
 
