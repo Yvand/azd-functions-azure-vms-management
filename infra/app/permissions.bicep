@@ -49,4 +49,4 @@ resource functionAppCustomRoleAssignment 'Microsoft.Authorization/roleAssignment
 }
 
 output customRoleDefinitionId string = customRoleDefinition.id
-output customRoleDefinitionName string = customRoleDefinition.name
+output customRoleDefinitionName string = customRoleDefinition.properties.roleName

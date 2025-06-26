@@ -101,7 +101,7 @@ The function app uses its managed identity to authenticate to Azure. To act on t
 "Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action"
 ```
 
-> **Warning**
+> [!WARNING]
 > Deleting resources using the command `azd down` does NOT delete the custom role definition, it must be deleted manually by runnint this command:
 > `az role definition delete --name "customRoleDef-XXXX"`
 > You can find the custom role definition's name in the output of the azd environment
