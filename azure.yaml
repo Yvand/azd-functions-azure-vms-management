@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
-name: functions-quickstart-typescript-azuresdk
+name: azd-functions-azure-vms-management
 metadata:
   template: Yvand/functions-quickstart-spo-azd@1.2.0
 services:

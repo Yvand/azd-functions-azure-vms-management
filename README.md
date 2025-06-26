@@ -1,6 +1,7 @@
+<!--
 ---
-name: Azure Functions for Azure Compute SDK
-description: This quickstart uses azd CLI to deploy Azure Functions to manage your virtual machines running in Azure.
+name: Azure function app to manage virtual machines
+description: This template uses Azure Developer CLI (azd) to deploy an Azure function app to manage virtual machines running in Azure.
 page_type: sample
 languages:
 - azdeveloper
@@ -9,52 +10,50 @@ languages:
 - typescript
 products:
 - azure-functions
-urlFragment: functions-quickstart-typescript-azuresdk
+urlFragment: azd-functions-azure-vms-management
 ---
+-->
 
-# Azure Functions for Azure Compute SDK
+# Azure function app to manage virtual machines
 
-This quickstart is based on [this repository](https://github.com/Yvand/functions-quickstart-spo-azd). It uses Azure Developer command-line (azd) tools to deploy Azure Functions which can start / stop virtual machines. on your own Azure subscription.  
-The Azure functions use the [Flex Consumption plan](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan), are written in TypeScript and run in Node.js 20.  
+This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an Azure function app to manage virtual machines.
 
 ## Overview
 
-This project deploys HTTP-triggered functions to start / stop virtual machines.
+The function app uses the [Flex Consumption plan](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan) and is written in TypeScript.  
+It contains multiple HTTP functions, and timer functions to automate some actions.
 
 ## Security of the Azure resources
 
 The resources deployed in Azure are configured with a high level of security: 
-- The functions service connects to the storage account and the key vault using a private endpoint.
-- No network access is allowed on the storage account and the key vault, except on specified IPs (configurable).
-- Authorization is configured using the functions service's managed identity (no access key or legacy access policy is enabled).
-- All the functions require a key to be called.
+- The function app connects to the storage account using a private endpoint.
+- No public network access is allowed on the storage account.
+- All the permissions are granted to the function app's managed identity (no secret, access key or legacy access policy is used).
+- All the functions require an app key to be called.
 
 ## Prerequisites
 
-+ [Node.js 20](https://www.nodejs.org/)
-+ [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local?pivots=programming-language-typescript#install-the-azure-functions-core-tools)
-+ [Azure Developer CLI (AZD)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-+ To use Visual Studio Code to run and debug locally:
-  + [Visual Studio Code](https://code.visualstudio.com/)
-  + [Azure Functions extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurefunctions)
+- [Node.js 22](https://www.nodejs.org/)
+- [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
+- [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 
 ## Initialize the local project
 
 You can initialize a project from this `azd` template in one of these ways:
 
-+ Use this `azd init` command from an empty local (root) folder:
+- Use this `azd init` command from an empty local (root) folder:
 
     ```shell
-    azd init --template Yvand/functions-quickstart-spo-azd
+    azd init --template Yvand/azd-functions-azure-vms-management
     ```
 
     Supply an environment name, such as `functions-azuresdk-main` when prompted. In `azd`, the environment is used to maintain a unique deployment context for your app.
 
-+ Clone the GitHub template repository, and create an `azd` environment (in this example, `functions-azuresdk-main`):
+- Clone the GitHub template repository, and create an `azd` environment (in this example, `functions-azuresdk-main`):
 
     ```shell
-    git clone https://github.com/Yvand/functions-quickstart-spo-azd.git
-    cd functions-quickstart-spo-azd
+    git clone https://github.com/Yvand/azd-functions-azure-vms-management.git
+    cd azd-functions-azure-vms-management
     azd env new functions-azuresdk-main
     ```
 
@@ -68,15 +67,12 @@ You can initialize a project from this `azd` template in one of these ways:
       "Values": {
          "AzureWebJobsStorage": "UseDevelopmentStorage=true",
          "FUNCTIONS_WORKER_RUNTIME": "node",
-         "TenantPrefix": "YOUR_SHAREPOINT_TENANT_PREFIX",
-         "SiteRelativePath": "/sites/YOUR_SHAREPOINT_SITE_NAME"
+         "SubscriptionId": "YOUR_AZURE_SUBSCRIPTION_ID",
       }
    }
    ```
 
 1. Review the file `infra/main.parameters.json` to customize the parameters used for provisioning the resources in Azure. Review [this article](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/manage-environment-variables) to manage the azd's environment variables.
-
-   Important: Ensure the values for `TenantPrefix` and `SiteRelativePath` are identical between the files `local.settings.json` (used when running the functions locally) and `infra\main.parameters.json` (used to set the environment variables in Azure).
 
 1. Install the dependencies and build the functions app:
 
@@ -89,48 +85,24 @@ You can initialize a project from this `azd` template in one of these ways:
 
 1. The functions can also be run locally by executing command `npm run start`.
 
-# Grant permissions to the function app
+## Permissions granted to the function app
 
-The function app will use its system-assigned managed identity to authenticate in the Azure subscription. In this section, we will create and assign a custom role definition to the function app's managed identity.
+The function app uses its managed identity to authenticate to Azure. To grant it only the permissions it truly needs, a [custom role definition](infra/app/permissions.bicep#L7) is created and assigned to the function app's managed identity, with the following permissions:
 
-## Create a custom role definition
-
-The script below creates a custom role definition with only the permissions strictly required for the function app to work correctly:
-
-```shell
-az role definition create --role-definition '{
-    "Name": "Yvand/functions-quickstart-typescript-azuresdk",
-    "IsCustom": true,
-    "Description": "Can start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
-    "Actions": [
-        "Microsoft.Compute/*/read",
-        "Microsoft.Compute/virtualMachines/start/action",
-        "Microsoft.Compute/virtualMachines/restart/action",
-        "Microsoft.Compute/virtualMachines/deallocate/action",
-        "Microsoft.Compute/disks/write",
-        "Microsoft.Security/locations/jitNetworkAccessPolicies/read",
-        "Microsoft.Security/locations/jitNetworkAccessPolicies/write",
-        "Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action"
-    ],
-    "NotActions": [
-    ],
-    "AssignableScopes": [
-        "/subscriptions/${subscriptionId}"
-    ]
-}'
+```bicep
+'Microsoft.Resources/subscriptions/resourceGroups/read'
+'Microsoft.Compute/virtualMachines/read'
+'Microsoft.Compute/virtualMachines/start/action'
+'Microsoft.Compute/virtualMachines/restart/action'
+'Microsoft.Compute/virtualMachines/deallocate/action'
+'Microsoft.Compute/disks/write'
+'Microsoft.Security/locations/jitNetworkAccessPolicies/read'
+'Microsoft.Security/locations/jitNetworkAccessPolicies/write'
+'Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action'
 ```
 
-## Assign the custom role to the function app's managed identity
-
-The script below assigns the custom role to the function app's managed identity, in the whole subscription:
-
-```bash
-funcAppName="YOUR_FUNC_APP_NAME"
-funcAppPrincipalId=$(az ad sp list --filter "displayName eq '${funcAppName}' and servicePrincipalType eq 'ManagedIdentity'" --query "[0].id" -o tsv)
-customRoleDefinitionId=$(az role definition list --name "Yvand/functions-quickstart-typescript-azuresdk" --query "[0].id" -o tsv)
-subscriptionId=$(az account show --query id --output tsv)
-az role assignment create --assignee $funcAppPrincipalId --role $customRoleDefinitionId --scope "/subscriptions/${subscriptionId}"
-```
+> [!WARNING]
+> Deleting the resources using the command `azd down` won't delete the custom role definition, it will need to be deleted manually as [explained here](#Delete-the-custom-role-definition).
 
 ## Call the functions
 
@@ -146,15 +118,15 @@ It takes parameters from a .env file on the same folder. You can create it based
 Below is a sample script in Bash that calls the functions in Azure using `curl`:
 
 ```bash
-# Edit those variables to fit your app function
+# Edit those variables to match your function app
 funchost="YOUR_FUNC_APP_NAME"
 code="YOUR_HOST_KEY"
 resourceGroup="YOUR_RESOURCE_GROUP"
 
 # VMs
-vmsParameter="&vms=VMNAME1,VMNAME2"
+vmsParameter="&vms=VMNAME1,VMNAME2" # Optional, if missing, action applies to all VMs in the resource group
 curl "https://${funchost}.azurewebsites.net/api/vms/list?g=${resourceGroup}"
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/updateOsDiskSku?g=${resourceGroup}${vmsParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/setDiskSku?g=${resourceGroup}${vmsParameter}"
 curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?g=${resourceGroup}${vmsParameter}"
 curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?g=${resourceGroup}${vmsParameter}}&nowait"
 
@@ -171,13 +143,13 @@ curl -X POST "https://${funchost}.azurewebsites.net/api/jits/delete?g=${resource
 The same script, which calls the functions when they run in your local environment:
 
 ```bash
-# Edit those variables to fit your app function
+# Edit those variables to match your function app
 resourceGroup="YOUR_RESOURCE_GROUP"
 
 # VMs
-vmsParameter="&vms=VMNAME1,VMNAME2"
+vmsParameter="&vms=VMNAME1,VMNAME2" # Optional, if missing, action applies to all VMs in the resource group
 curl "http://localhost:7071/api/vms/list?g=${resourceGroup}"
-curl -X POST "http://localhost:7071/api/vms/updateOsDiskSku?g=${resourceGroup}${vmsParameter}"
+curl -X POST "http://localhost:7071/api/vms/setDiskSku?g=${resourceGroup}${vmsParameter}"
 curl -X POST "http://localhost:7071/api/vms/start?g=${resourceGroup}${vmsParameter}"
 curl -X POST "http://localhost:7071/api/vms/deallocate?g=${resourceGroup}${vmsParameter}}&nowait"
 
@@ -196,37 +168,19 @@ curl -X POST "http://localhost:7071/api/jits/delete?g=${resourceGroup}${policyNa
 When the functions run in your local environment, the logging goes to the console.  
 When the functions run in Azure, the logging goes to the Application Insights resource configured in the app service.  
 
-### KQL queries for Application Insights
-
-The KQL query below shows the entries from all the functions, and filters out the logging from the infrastructure:
-
-```kql
-traces 
-| where isnotempty(operation_Name)
-| project timestamp, operation_Name, severityLevel, message
-| order by timestamp desc
-```
-
-The KQL query below does the following:
-
-- Includes only the entries from the function `webhooks/service` (which receives the notifications from SharePoint)
-- Parses the `message` as a json document (which is how this project writes the messages)
-- Includes only the entries that were successfully parsed (excludes those from the infrastructure)
-
-```kql
-traces 
-| where operation_Name contains "webhooks-service"
-| extend jsonMessage = parse_json(message)
-| where isnotempty(jsonMessage.['message'])
-| project timestamp, operation_Name, severityLevel, jsonMessage.['message'], jsonMessage.['error']
-| order by timestamp desc
-```
-
-## Known issues
-
-Azure Functions Flex Consumption plan is currently in preview, be aware about its [current limitations and issues](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan#considerations).
-
 ## Cleanup the resources in Azure
 
 You can delete all the resources this project created in Azure, by running the command `azd down`.  
 Alternatively, you can delete the resource group, which has the azd environment's name by default.
+
+### Delete the custom role definition
+
+The custom role definition needs to be deleted manually, either through the [Azure portal](https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade), or using the commands below:
+
+```shell
+az role assignment delete --role --name "customRoleDef-XXX" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
+az role definition delete --name "customRoleDef-XXX"
+```
+
+> [!NOTE]
+> You can find the custom role definition's name and the subscription ID in the output of the azd environment
