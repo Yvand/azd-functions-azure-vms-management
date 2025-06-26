@@ -102,7 +102,7 @@ The function app uses its managed identity to authenticate to Azure. To grant it
 ```
 
 > [!WARNING]
-> Deleting the resources using the command `azd down` won't delete the custom role definition, it will need to be deleted manually as [explained here](#cleanup-the-resources-in-azure).
+> Deleting the resources using the command `azd down` won't delete the custom role definition, it will need to be deleted manually as [explained here](#Delete-the-custom-role-definition).
 
 ## Call the functions
 
@@ -173,7 +173,9 @@ When the functions run in Azure, the logging goes to the Application Insights re
 You can delete all the resources this project created in Azure, by running the command `azd down`.  
 Alternatively, you can delete the resource group, which has the azd environment's name by default.
 
-This does not remove the custom role definition, so it needs to be removed manually, using the commands below:
+### Delete the custom role definition
+
+This does not delete the custom role definition. It can be removed through the [Azure portal](https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade), or using the commands below:
 
 ```shell
 az role assignment delete --role --name "customRoleDef-XXX" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
