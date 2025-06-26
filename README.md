@@ -102,7 +102,7 @@ The function app uses its managed identity to authenticate to Azure. To act on t
 ```
 
 > [!WARNING]
-> Deleting resources using the command `azd down` does NOT delete the custom role definition, it must be deleted manually as [explained here](#cleanup-the-resources-in-azure)
+> Deleting the resources using the command `azd down` does not delete the custom role definition, it must be deleted manually as [explained here](#cleanup-the-resources-in-azure)
 
 ## Call the functions
 
@@ -180,5 +180,5 @@ az role assignment delete --role --name "customRoleDef-XXX" --scope "/subscripti
 az role definition delete --name "customRoleDef-XXX"
 ```
 
-> [!WARNING]
+> [!NOTE]
 > You can find the custom role definition's name and the subscription ID in the output of the azd environment
