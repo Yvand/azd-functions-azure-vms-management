@@ -20,7 +20,7 @@ This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an 
 
 ## Overview
 
-The function app uses the [Flex Consumption plan](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan) and is written in TypeScript.  
+The function app uses the [Flex Consumption plan](https://learn.microsoft.com/azure/azure-functions/flex-consumption-plan) and is written in TypeScript.  
 It contains multiple HTTP functions, and timer functions to automate some actions.
 
 ## Security of the Azure resources
@@ -30,6 +30,12 @@ The resources deployed in Azure are configured with a high level of security:
 - No public network access is allowed on the storage account.
 - All the permissions are granted to the function app's managed identity (no secret, access key or legacy access policy is used).
 - All the functions require an app key to be called.
+
+## Permissions required to provision the resources in Azure
+
+The user running **azd** must have at least the following roles to successfully provision the resources:
+
+- Azure role **[Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)** or **[User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)**: To be able to [create](https://learn.microsoft.com/azure/role-based-access-control/custom-roles-rest#create-a-custom-role) the [custom role definition](#Permissions-granted-to-the-function-app) (and assign it to the function app). Alternatively, user can be assigned with a custom role that has the `Microsoft.Authorization/roleDefinitions/write` permission.
 
 ## Prerequisites
 
@@ -72,7 +78,7 @@ You can initialize a project from this `azd` template in one of these ways:
    }
    ```
 
-1. Review the file `infra/main.parameters.json` to customize the parameters used for provisioning the resources in Azure. Review [this article](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/manage-environment-variables) to manage the azd's environment variables.
+1. Review the file `infra/main.parameters.json` to customize the parameters used for provisioning the resources in Azure. Review [this article](https://learn.microsoft.com/azure/developer/azure-developer-cli/manage-environment-variables) to manage the azd's environment variables.
 
 1. Install the dependencies and build the functions app:
 
