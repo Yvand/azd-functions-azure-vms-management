@@ -35,7 +35,7 @@ The resources deployed in Azure are configured with a high level of security:
 
 The user running **azd** must have at least the following roles to successfully provision the resources:
 
-- Azure role **[Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)** or **[User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)**: To be able to [create](https://learn.microsoft.com/azure/role-based-access-control/custom-roles-rest#create-a-custom-role) the [custom role definition](#Permissions-granted-to-the-function-app) (and assign it to the function app). Alternatively, user can be assigned with a custom role that has the `Microsoft.Authorization/roleDefinitions/write` permission.
+- Azure role **[Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)** or **[User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)**: To be able to [create](https://learn.microsoft.com/azure/role-based-access-control/custom-roles-rest#create-a-custom-role) the [custom role definition](#Permissions-granted-to-the-function-app). Alternatively, the user can be assigned with a custom role that has the `Microsoft.Authorization/roleDefinitions/write` permission.
 
 ## Prerequisites
 
