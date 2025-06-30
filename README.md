@@ -35,7 +35,9 @@ The resources deployed in Azure are configured with a high level of security:
 
 The user running **azd** must have at least the following roles to successfully provision the resources:
 
-- Azure role **[Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)** or **[User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)**: To be able to [create](https://learn.microsoft.com/azure/role-based-access-control/custom-roles-rest#create-a-custom-role) the [custom role definition](#Permissions-granted-to-the-function-app). Alternatively, the user can be assigned with a custom role that has the `Microsoft.Authorization/roleDefinitions/write` permission.
+- Azure role **[Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)** or **[User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)**, or a custom role that has the `Microsoft.Authorization/roleDefinitions/write` permission: To be able to [create](https://learn.microsoft.com/azure/role-based-access-control/custom-roles-rest#create-a-custom-role) the [custom role definition](#Permissions-granted-to-the-function-app). Alternatively, the resources can be provisionned with parameter `addCustomRoleDefinition` set to false, and the custom role definition [created manually](#create-the-custom-role-definition-manually).
+- Azure role **[Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor)**: To create all the resources needed.
+- Azure role **[Role Based Access Control Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#role-based-access-control-administrator)**: To assign roles (to access the storage account and Application Insights) to the managed identity of the function app.
 
 ## Prerequisites
 
@@ -109,6 +111,46 @@ The function app uses its managed identity to authenticate to Azure. To grant it
 
 > [!WARNING]
 > Deleting the resources using the command `azd down` won't delete the custom role definition, it will need to be deleted manually as [explained here](#Delete-the-custom-role-definition).
+
+### Create the custom role definition manually
+
+If the resources in Azure were provisionned with the parameter `addCustomRoleDefinition` set to false, the custom role definition must be created manually using the steps below:
+
+1. Run the script below to create the custom role definition:
+
+   ```shell
+   az role definition create --role-definition '{
+      "Name": "Yvand/azd-functions-azure-vms-management",
+      "IsCustom": true,
+      "Description": "Can list resource groups, start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
+      "Actions": [
+         "Microsoft.Resources/subscriptions/resourceGroups/read",
+         "Microsoft.Compute/virtualMachines/read",
+         "Microsoft.Compute/virtualMachines/start/action",
+         "Microsoft.Compute/virtualMachines/restart/action",
+         "Microsoft.Compute/virtualMachines/deallocate/action",
+         "Microsoft.Compute/disks/write",
+         "Microsoft.Security/locations/jitNetworkAccessPolicies/read",
+         "Microsoft.Security/locations/jitNetworkAccessPolicies/write",
+         "Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action"
+      ],
+      "NotActions": [
+      ],
+      "AssignableScopes": [
+         "/subscriptions/${subscriptionId}"
+      ]
+   }'
+   ```
+
+1. Run the script below toa assign the custom role to the function app's managed identity:
+
+   ```bash
+   funcAppName="YOUR_FUNC_APP_NAME"
+   funcAppPrincipalId=$(az ad sp list --filter "displayName eq '${funcAppName}' and servicePrincipalType eq 'ManagedIdentity'" --query "[0].id" -o tsv)
+   customRoleDefinitionId=$(az role definition list --name "Yvand/azd-functions-azure-vms-management" --query "[0].id" -o tsv)
+   subscriptionId=$(az account show --query id --output tsv)
+   az role assignment create --assignee $funcAppPrincipalId --role $customRoleDefinitionId --scope "/subscriptions/${subscriptionId}"
+   ```
 
 ## Call the functions
 
