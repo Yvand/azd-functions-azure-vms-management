@@ -69,6 +69,7 @@ param vNetName string = ''
 param keyVaultName string = ''
 @description('Id of the user identity to be used for testing and debugging. This is not required in production. Leave empty if not needed.')
 param principalId string = deployer().objectId
+param addCustomRoleDefinition bool = true
 param customRoleDefinitionName string = ''
 
 var abbrs = loadJsonContent('./abbreviations.json')
@@ -301,7 +302,7 @@ module vaultPrivateEndpoint 'app/vault-PrivateEndpoint.bicep' = if (vnetEnabled 
   }
 }
 
-module customRoleDefinition 'app/permissions.bicep' = {
+module customRoleDefinition 'app/permissions.bicep'  = if (addCustomRoleDefinition) {
   name: 'customRoleDefinition'
   params: {
     functionAppName: api.outputs.SERVICE_API_NAME

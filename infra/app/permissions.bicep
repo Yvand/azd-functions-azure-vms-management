@@ -17,6 +17,7 @@ resource customRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-05-0
         actions: [
           'Microsoft.Resources/subscriptions/resourceGroups/read'
           'Microsoft.Compute/virtualMachines/read'
+          'Microsoft.Compute/virtualMachines/write'
           'Microsoft.Compute/virtualMachines/start/action'
           'Microsoft.Compute/virtualMachines/restart/action'
           'Microsoft.Compute/virtualMachines/deallocate/action'

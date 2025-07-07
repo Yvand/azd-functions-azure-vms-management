@@ -16,7 +16,7 @@ urlFragment: azd-functions-azure-vms-management
 
 # Azure function app to manage virtual machines
 
-This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an Azure function app to manage virtual machines.
+This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an Azure function app to manage virtual machines running in Azure.
 
 ## Overview
 
@@ -35,7 +35,11 @@ The resources deployed in Azure are configured with a high level of security:
 
 The user running **azd** must have at least the following roles to successfully provision the resources:
 
-- Azure role **[Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)** or **[User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)**: To be able to [create](https://learn.microsoft.com/azure/role-based-access-control/custom-roles-rest#create-a-custom-role) the [custom role definition](#Permissions-granted-to-the-function-app). Alternatively, the user can be assigned with a custom role that has the `Microsoft.Authorization/roleDefinitions/write` permission.
+- Azure role **[Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)** or **[User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)**, or a custom role that has the `Microsoft.Authorization/roleDefinitions/write` permission: To be able to [create](https://learn.microsoft.com/azure/role-based-access-control/custom-roles-rest#create-a-custom-role) the [custom role definition](#Permissions-granted-to-the-function-app).
+> [!NOTE]
+> Alternatively, the resources can be provisionned with [parameter `addCustomRoleDefinition`](infra/main.parameters.json#L17) set to false, and the custom role definition [created manually](#create-the-custom-role-definition-manually) afterwards.
+- Azure role **[Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor)**: To create all the resources needed.
+- Azure role **[Role Based Access Control Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#role-based-access-control-administrator)**: To assign roles (to access the storage account and Application Insights) to the managed identity of the function app.
 
 ## Prerequisites
 
@@ -98,6 +102,7 @@ The function app uses its managed identity to authenticate to Azure. To grant it
 ```bicep
 'Microsoft.Resources/subscriptions/resourceGroups/read'
 'Microsoft.Compute/virtualMachines/read'
+'Microsoft.Compute/virtualMachines/write'
 'Microsoft.Compute/virtualMachines/start/action'
 'Microsoft.Compute/virtualMachines/restart/action'
 'Microsoft.Compute/virtualMachines/deallocate/action'
@@ -107,8 +112,46 @@ The function app uses its managed identity to authenticate to Azure. To grant it
 'Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action'
 ```
 
-> [!WARNING]
-> Deleting the resources using the command `azd down` won't delete the custom role definition, it will need to be deleted manually as [explained here](#Delete-the-custom-role-definition).
+### Create the custom role definition manually
+
+If the resources in Azure were provisionned with the [parameter `addCustomRoleDefinition`](infra/main.parameters.json#L17) set to false, the custom role definition must be created manually using the steps below:
+
+1. Create the custom role definition ([az cli doc](https://learn.microsoft.com/cli/azure/role/definition?view=azure-cli-latest)):
+
+   ```shell
+   az role definition create --role-definition '{
+      "Name": "Yvand/azd-functions-azure-vms-management",
+      "IsCustom": true,
+      "Description": "Can list resource groups, start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
+      "Actions": [
+         "Microsoft.Resources/subscriptions/resourceGroups/read",
+         "Microsoft.Compute/virtualMachines/read",
+         "Microsoft.Compute/virtualMachines/write",
+         "Microsoft.Compute/virtualMachines/start/action",
+         "Microsoft.Compute/virtualMachines/restart/action",
+         "Microsoft.Compute/virtualMachines/deallocate/action",
+         "Microsoft.Compute/disks/write",
+         "Microsoft.Security/locations/jitNetworkAccessPolicies/read",
+         "Microsoft.Security/locations/jitNetworkAccessPolicies/write",
+         "Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action"
+      ],
+      "NotActions": [
+      ],
+      "AssignableScopes": [
+         "/subscriptions/${subscriptionId}"
+      ]
+   }'
+   ```
+
+1. Assign the custom role to the function app's managed identity ([az cli doc](https://learn.microsoft.com/cli/azure/role/assignment?view=azure-cli-latest)):
+
+   ```shell
+   funcAppName="YOUR_FUNC_APP_NAME"
+   funcAppPrincipalId=$(az ad sp list --filter "displayName eq '${funcAppName}' and servicePrincipalType eq 'ManagedIdentity'" --query "[0].id" -o tsv)
+   customRoleDefinitionId=$(az role definition list --name "Yvand/azd-functions-azure-vms-management" --query "[0].id" -o tsv)
+   subscriptionId=$(az account show --query id --output tsv)
+   az role assignment create --assignee $funcAppPrincipalId --role $customRoleDefinitionId --scope "/subscriptions/${subscriptionId}"
+   ```
 
 ## Call the functions
 
@@ -179,13 +222,16 @@ When the functions run in Azure, the logging goes to the Application Insights re
 You can delete all the resources this project created in Azure, by running the command `azd down`.  
 Alternatively, you can delete the resource group, which has the azd environment's name by default.
 
+> [!WARNING]
+> This does not delete the custom role definition, it needs to be deleted manually as [explained below](#Delete-the-custom-role-definition).
+
 ### Delete the custom role definition
 
-The custom role definition needs to be deleted manually, either through the [Azure portal](https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade), or using the commands below:
+The custom role definition needs to be deleted manually, either through the [Subscriptions page in the Azure portal](https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade) > **Access control (IAM)** > **Roles** , or using the commands below:
 
 ```shell
-az role assignment delete --role --name "customRoleDef-XXX" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
-az role definition delete --name "customRoleDef-XXX"
+az role assignment delete --role --name "customRoleDef-NAME" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
+az role definition delete --name "customRoleDef-NAME"
 ```
 
 > [!NOTE]

@@ -67,7 +67,10 @@ export async function createOrUpdateJit(request: HttpRequest, context: Invocatio
         if (!g || !vmName) { return { status: 400, body: `Required parameters are missing.` }; }
 
         const [virtualMachine, error] = await safeWait(virtualMachines_get(g, vmName));
-        if (error || !virtualMachine.id) { return { status: 400, body: `Virtual machine '${vmName}' was not found in '${g}'.` }; }
+        if (error || !virtualMachine.id) { 
+            const errorDetails = logError(context, error, `Could not get virtual machine '${vmName}' in '${g}'`);
+            return { status: errorDetails.httpStatus, jsonBody: errorDetails };
+        }
 
         const virtualMachinePolicy: JitNetworkAccessPolicyVirtualMachine = {
             id: virtualMachine.id,
