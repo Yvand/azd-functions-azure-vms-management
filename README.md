@@ -16,7 +16,7 @@ urlFragment: azd-functions-azure-vms-management
 
 # Azure function app to manage virtual machines
 
-This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an Azure function app to manage virtual machines.
+This template uses [Azure Developer CLI (azd)](https://aka.ms/azd) to deploy an Azure function app to manage virtual machines running in Azure.
 
 ## Overview
 
@@ -99,7 +99,7 @@ The function app uses its managed identity to authenticate to Azure. To grant it
 
 ```bicep
 'Microsoft.Resources/subscriptions/resourceGroups/read'
-'Microsoft.Compute/virtualMachines/read'
+'Microsoft.Compute/virtualMachines/write'
 'Microsoft.Compute/virtualMachines/start/action'
 'Microsoft.Compute/virtualMachines/restart/action'
 'Microsoft.Compute/virtualMachines/deallocate/action'
@@ -125,7 +125,7 @@ If the resources in Azure were provisionned with the parameter `addCustomRoleDef
       "Description": "Can list resource groups, start/stop virtual machines, update their disk SKU, and manage their JIT policies.",
       "Actions": [
          "Microsoft.Resources/subscriptions/resourceGroups/read",
-         "Microsoft.Compute/virtualMachines/read",
+         "Microsoft.Compute/virtualMachines/write",
          "Microsoft.Compute/virtualMachines/start/action",
          "Microsoft.Compute/virtualMachines/restart/action",
          "Microsoft.Compute/virtualMachines/deallocate/action",

@@ -15,7 +15,7 @@
       "value": ["${ALLOWED_IP_ADDRESSES}"]
     },
     "addCustomRoleDefinition" : {
-      "value": false
+      "value": true
     },
     "appSettings": {
       "value": {
