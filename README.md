@@ -117,9 +117,9 @@ The function app uses its managed identity to authenticate to Azure. To grant it
 
 ### Create the custom role definition manually
 
-If the resources in Azure were provisionned with the parameter `addCustomRoleDefinition` set to false, the custom role definition must be created manually using the steps below:
+If the resources in Azure were provisionned with the [parameter `addCustomRoleDefinition`](infra/main.parameters.json#L17) set to false, the custom role definition must be created manually using the steps below:
 
-1. Run the script below to create the custom role definition:
+1. Create the custom role definition ([az cli doc](https://learn.microsoft.com/cli/azure/role/definition?view=azure-cli-latest)):
 
    ```shell
    az role definition create --role-definition '{
@@ -146,9 +146,9 @@ If the resources in Azure were provisionned with the parameter `addCustomRoleDef
    }'
    ```
 
-1. Run the script below toa assign the custom role to the function app's managed identity:
+1. Assign the custom role to the function app's managed identity ([az cli doc](https://learn.microsoft.com/cli/azure/role/assignment?view=azure-cli-latest)):
 
-   ```bash
+   ```shell
    funcAppName="YOUR_FUNC_APP_NAME"
    funcAppPrincipalId=$(az ad sp list --filter "displayName eq '${funcAppName}' and servicePrincipalType eq 'ManagedIdentity'" --query "[0].id" -o tsv)
    customRoleDefinitionId=$(az role definition list --name "Yvand/azd-functions-azure-vms-management" --query "[0].id" -o tsv)
