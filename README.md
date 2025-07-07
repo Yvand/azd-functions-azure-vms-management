@@ -112,9 +112,6 @@ The function app uses its managed identity to authenticate to Azure. To grant it
 'Microsoft.Security/locations/jitNetworkAccessPolicies/initiate/action'
 ```
 
-> [!WARNING]
-> Deleting the resources using the command `azd down` won't delete the custom role definition, it will need to be deleted manually as [explained here](#Delete-the-custom-role-definition).
-
 ### Create the custom role definition manually
 
 If the resources in Azure were provisionned with the [parameter `addCustomRoleDefinition`](infra/main.parameters.json#L17) set to false, the custom role definition must be created manually using the steps below:
@@ -225,9 +222,12 @@ When the functions run in Azure, the logging goes to the Application Insights re
 You can delete all the resources this project created in Azure, by running the command `azd down`.  
 Alternatively, you can delete the resource group, which has the azd environment's name by default.
 
+> [!WARNING]
+> This does not delete the custom role definition, it needs to be deleted manually as [explained below](#Delete-the-custom-role-definition).
+
 ### Delete the custom role definition
 
-The custom role definition needs to be deleted manually, either through the [Azure portal](https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade), or using the commands below:
+The custom role definition needs to be deleted manually, either through the [Subscriptions page in the Azure portal](https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade) > **Access control (IAM)** > **Roles** , or using the commands below:
 
 ```shell
 az role assignment delete --role --name "customRoleDef-XXX" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
