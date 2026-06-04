@@ -43,7 +43,7 @@ The user running **azd** must have at least the following roles to successfully 
 
 ## Prerequisites
 
-- [Node.js 22](https://www.nodejs.org/)
+- [Node.js 24](https://www.nodejs.org/)
 - [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
 - [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 
