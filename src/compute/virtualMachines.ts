@@ -5,6 +5,7 @@ import { getAzureCredential } from "../utils/authentication.js";
 import { CommonConfig, VirtualMachineOperationState, safeWait } from "../utils/common.js";
 import { logError, logInfo } from "../utils/loggingHandler.js";
 
+// https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/compute/arm-compute
 // https://github.com/Azure-Samples/azure-sdk-for-js-samples/tree/main/samples/compute
 // https://learn.microsoft.com/en-us/javascript/api/overview/azure/arm-compute-readme?view=azure-node-latest
 // https://learn.microsoft.com/en-us/javascript/api/@azure/arm-compute/computemanagementclient?view=azure-node-latest
