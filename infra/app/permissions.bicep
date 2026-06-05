@@ -4,7 +4,7 @@ param resourceGroupName string
 param functionAppName string
 param customRoleDefinitionName string
 
-resource customRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' = {
+resource customRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
   name: guid(subscription().subscriptionId, customRoleDefinitionName)
   scope: subscription()
   properties: {
