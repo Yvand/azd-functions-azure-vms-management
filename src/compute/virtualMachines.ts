@@ -28,12 +28,13 @@ export async function virtualMachines_start(context: InvocationContext, g: strin
     let operationStatus: OperationStatus;
     try {
         if (wait) {
-            await client.virtualMachines.beginStartAndWait(g, vmName)
+            await client.virtualMachines.start(g, vmName);
             operationStatus = "succeeded";
             logInfo(context, `Started virtual machine '${vmName}' in resource group '${g}'`);
         } else {
-            const response = await client.virtualMachines.beginStart(g, vmName)
-            operationStatus = response.getOperationState().status;
+            const poller = client.virtualMachines.start(g, vmName);
+            await poller.submitted();
+            operationStatus = poller.operationState!.status;
             logInfo(context, `Starting virtual machine '${vmName}' in resource group '${g}' without waiting for completion. Status: '${operationStatus}'`);
         }
         const result: VirtualMachineOperationState = {
@@ -60,12 +61,13 @@ export async function virtualMachines_deallocate(context: InvocationContext, g: 
     try {
         let operationStatus: OperationStatus;
         if (wait) {
-            await client.virtualMachines.beginDeallocateAndWait(g, vmName)
+            await client.virtualMachines.deallocate(g, vmName);
             operationStatus = "succeeded";
             logInfo(context, `Deallocated virtual machine '${vmName}' in resource group '${g}'`);
         } else {
-            const response = await client.virtualMachines.beginDeallocate(g, vmName)
-            operationStatus = response.getOperationState().status;
+            const poller = client.virtualMachines.deallocate(g, vmName);
+            await poller.submitted();
+            operationStatus = poller.operationState!.status;
             logInfo(context, `Deallocating virtual machine '${vmName}' in resource group '${g}' without waiting for completion. Status: '${operationStatus}'`);
         }
         const result: VirtualMachineOperationState = {
@@ -123,12 +125,13 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
     try {
         let operationStatus: OperationStatus;
         if (wait) {
-            await client.disks.beginUpdateAndWait(g, disk_name, diskUpdateParameter)
+            await client.disks.update(g, disk_name, diskUpdateParameter);
             operationStatus = "succeeded";
             logInfo(context, `Updated the OS disk of virtual machine '${vmName}' in resource group '${g}' to SKU '${skuName}'`);
         } else {
-            const response = await client.disks.beginUpdate(g, disk_name, diskUpdateParameter);
-            operationStatus = response.getOperationState().status;
+            const poller = client.disks.update(g, disk_name, diskUpdateParameter);
+            await poller.submitted();
+            operationStatus = poller.operationState!.status;
             logInfo(context, `Updating the OS disk of virtual machine '${vmName}' in resource group '${g}' without waiting for completion. Status: '${operationStatus}'`);
         }
         const result: VirtualMachineOperationState = {
