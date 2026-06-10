@@ -12,6 +12,22 @@ import { logError, logInfo } from "../utils/loggingHandler.js";
 // https://learn.microsoft.com/en-us/javascript/api/@azure/arm-compute/virtualmachine?view=azure-node-latest
 const client = new ComputeManagementClient(getAzureCredential(), CommonConfig.SubscriptionId);
 
+function getResourceGroupName(resourceId: string | undefined): string | undefined {
+    if (!resourceId) {
+        return undefined;
+    }
+
+    const resourceGroupMarker = "/resourceGroups/";
+    const start = resourceId.toLowerCase().indexOf(resourceGroupMarker.toLowerCase());
+    if (start === -1) {
+        return undefined;
+    }
+
+    const valueStart = start + resourceGroupMarker.length;
+    const valueEnd = resourceId.indexOf("/", valueStart);
+    return valueEnd === -1 ? resourceId.slice(valueStart) : resourceId.slice(valueStart, valueEnd);
+}
+
 export async function virtualMachines_list(g: string): Promise<VirtualMachine[]> {
     let virtualMachines: VirtualMachine[] = [];
     for await (const vm of client.virtualMachines.list(g)) {
@@ -91,6 +107,34 @@ export async function virtualMachines_deallocate(context: InvocationContext, g: 
 }
 
 export async function disk_updateOsDiskSku(context: InvocationContext, g: string, vmName: string, skuName: string, wait: boolean = true): Promise<any> {
+
+    if (!g?.trim()) {
+        const allVirtualMachines: VirtualMachine[] = [];
+        for await (const virtualMachine of client.virtualMachines.listAll()) {
+            allVirtualMachines.push(virtualMachine);
+        }
+
+        const updates = allVirtualMachines
+            .filter(virtualMachine => virtualMachine.name)
+            .map(async (virtualMachine) => {
+                const resourceGroup = getResourceGroupName(virtualMachine.id);
+                if (!resourceGroup) {
+                    const error = new Error(`Resource group not found for virtual machine '${virtualMachine.name}'`);
+                    const result: VirtualMachineOperationState = {
+                        virtualMachineName: virtualMachine.name || "",
+                        resourceGroup: "",
+                        status: "failed",
+                        error,
+                    };
+                    return Promise.reject(result);
+                }
+
+                return disk_updateOsDiskSku(context, resourceGroup, virtualMachine.name || "", skuName, wait);
+            });
+
+        const result: PromiseSettledResult<any>[] = await Promise.allSettled(updates);
+        return result.map(res => res.status === "fulfilled" ? res.value : res.reason);
+    }
 
     const diskUpdateParameter: DiskUpdate = {
         sku: {
