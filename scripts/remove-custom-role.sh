@@ -24,8 +24,8 @@ if [ -z "$CUSTOM_ROLE_DEFINITION_NAME" ]; then
    exit 1
 fi
 
-#echo -e "Deleting custom role '$CUSTOM_ROLE_DEFINITION_NAME'..."
+echo -e "Deleting custom role '$CUSTOM_ROLE_DEFINITION_NAME' in subscription '${AZURE_SUBSCRIPTION_ID}'..."
 az account set --subscription $AZURE_SUBSCRIPTION_ID
-az role assignment delete --role --name "$CUSTOM_ROLE_DEFINITION_NAME" --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID"
+az role assignment delete --role "$CUSTOM_ROLE_DEFINITION_NAME" --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID"
 az role definition delete --name "$CUSTOM_ROLE_DEFINITION_NAME"
 echo -e "${YELLOW}Deleted custom role '$CUSTOM_ROLE_DEFINITION_NAME'.${NC}"

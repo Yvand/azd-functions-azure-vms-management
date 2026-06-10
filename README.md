@@ -230,7 +230,7 @@ Alternatively, you can delete the resource group, which has the azd environment'
 The custom role definition needs to be deleted manually, either through the [Subscriptions page in the Azure portal](https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade) > **Access control (IAM)** > **Roles** , or using the commands below:
 
 ```shell
-az role assignment delete --role --name "customRoleDef-NAME" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
+az role assignment delete --role "customRoleDef-NAME" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
 az role definition delete --name "customRoleDef-NAME"
 ```
 
