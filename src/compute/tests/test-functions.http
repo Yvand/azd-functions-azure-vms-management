@@ -4,5 +4,5 @@ Accept: application/json
 
 ###
 
-POST {{ $dotenv %baseUrl }}/api/vms/ensureDiskSku?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }} HTTP/1.1
+POST {{ $dotenv %baseUrl }}/api/vms/setDiskSku?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }} HTTP/1.1
 Accept: application/json

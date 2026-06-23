@@ -41,10 +41,7 @@ export async function startVirtualMachines(request: HttpRequest, context: Invoca
         if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
         const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmsParam);
-        let promises: Promise<any>[] = [];
-        vmNames.forEach(async (vm) => {
-            promises.push(virtualMachines_start(context, g, vm, wait));
-        });
+        const promises: Promise<any>[] = vmNames.map(vm => virtualMachines_start(context, g, vm, wait));
         const result: any[] = await Promise.allSettled(promises);
         logInfo(context, `Started the following virtual machines in resource group '${g}': ${vmNames.join(', ')}`);
         return { status: 200, jsonBody: result.map(res => res.status === 'fulfilled' ? res.value : res.reason) };
@@ -63,10 +60,7 @@ export async function deallocateVirtualMachines(request: HttpRequest, context: I
         if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
         const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmsParam);
-        let promises: Promise<any>[] = [];
-        vmNames.forEach(async (vm) => {
-            promises.push(virtualMachines_deallocate(context, g, vm, wait));
-        });
+        const promises: Promise<any>[] = vmNames.map(vm => virtualMachines_deallocate(context, g, vm, wait));
         const result: any[] = await Promise.allSettled(promises);
         return { status: 200, jsonBody: result.map(res => res.status === 'fulfilled' ? res.value : res.reason) };
     }
@@ -132,22 +126,22 @@ async function setVirtualMachinesDiskSKU(request: HttpRequest, context: Invocati
  * Applies the specified disk SKU to the OS disk of the specified virtual machines in the given resource group.
  * @param context The invocation context.
  * @param g The resource group name.
- * @param vmNamesParam The virtual machine names.
+ * @param vmNamesParam The virtual machine names (null, "*", comma-separated, or single name).
  * @param skuName The name of the disk SKU to apply.
  * @param wait Whether to wait for the operation to complete.
  * @returns A promise that resolves when the operation is complete.
  */
 async function setVirtualMachinesDiskSKUForGroup(context: InvocationContext, g: string, vmNamesParam: string | null, skuName: string, wait: boolean): Promise<any[]> {
-    const vmNames: string[] = await getVMNamesFromFuncParameter(g, vmNamesParam);
-    let promises: Promise<any>[] = [];
-    vmNames.forEach(async (vm) => {
-        promises.push(disk_updateOsDiskSku(context, g, vm, skuName, wait));
-    });
+    if (!vmNamesParam || vmNamesParam === "*") {
+        // Update all VMs in the resource group
+        return await disk_updateOsDiskSku(context, g, "", skuName, wait);
+    }
+
+    // Update specific VMs
+    const vmNames: string[] = vmNamesParam.includes(',') ? vmNamesParam.split(',') : [vmNamesParam];
+    const promises: Promise<any>[] = vmNames.map(vm => disk_updateOsDiskSku(context, g, vm, skuName, wait));
     const result: PromiseSettledResult<any>[] = await Promise.allSettled(promises);
-    // const vmsUpdateFailed: any[] = result.filter((res) => res.status === 'rejected');
-    // if (vmsUpdateFailed.length > 0) {
-    //     logInfo(context, `${vmsUpdateFailed.length} VMs encountered an error while updating their OS disk to SKU '${skuName}' in resource group '${g}': ${vmsUpdateFailed.map((res) => res.reason.virtualMachineName).join(', ')}`, LogLevel.Error);
-    // }
+    return result.map(res => res.status === 'fulfilled' ? res.value : res.reason);
     // const vmsUpdateSuccess: any[] = result.filter((res) => res.status === 'fulfilled');
     // if (vmsUpdateSuccess.length > 0) {
     //     logInfo(context, `Updated the OS disk to SKU '${skuName}' for the following virtual machines in resource group '${g}': ${vmsUpdateSuccess.map((res) => res.value.virtualMachineName).join(', ')}`);

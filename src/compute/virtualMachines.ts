@@ -107,35 +107,56 @@ export async function virtualMachines_deallocate(context: InvocationContext, g: 
 }
 
 export async function disk_updateOsDiskSku(context: InvocationContext, g: string, vmName: string, skuName: string, wait: boolean = true): Promise<any> {
+    // Determine which VMs to update
+    const vmsToUpdate: Array<{ resourceGroup: string; vmName: string }> = [];
 
     if (!g?.trim()) {
-        const allVirtualMachines: VirtualMachine[] = [];
+        // No resource group specified: get all VMs from all resource groups
         for await (const virtualMachine of client.virtualMachines.listAll()) {
-            allVirtualMachines.push(virtualMachine);
+            if (!virtualMachine.name) continue;
+
+            const resourceGroup = getResourceGroupName(virtualMachine.id);
+            if (!resourceGroup) {
+                const error = new Error(`Resource group not found for virtual machine '${virtualMachine.name}'`);
+                const result: VirtualMachineOperationState = {
+                    virtualMachineName: virtualMachine.name,
+                    resourceGroup: "",
+                    status: "failed",
+                    error,
+                };
+                vmsToUpdate.push({ resourceGroup: "", vmName: "" }); // Mark for error handling
+                continue;
+            }
+            vmsToUpdate.push({ resourceGroup, vmName: virtualMachine.name });
         }
-
-        const updates = allVirtualMachines
-            .filter(virtualMachine => virtualMachine.name)
-            .map(async (virtualMachine) => {
-                const resourceGroup = getResourceGroupName(virtualMachine.id);
-                if (!resourceGroup) {
-                    const error = new Error(`Resource group not found for virtual machine '${virtualMachine.name}'`);
-                    const result: VirtualMachineOperationState = {
-                        virtualMachineName: virtualMachine.name || "",
-                        resourceGroup: "",
-                        status: "failed",
-                        error,
-                    };
-                    return Promise.reject(result);
-                }
-
-                return disk_updateOsDiskSku(context, resourceGroup, virtualMachine.name || "", skuName, wait);
-            });
-
-        const result: PromiseSettledResult<any>[] = await Promise.allSettled(updates);
-        return result.map(res => res.status === "fulfilled" ? res.value : res.reason);
+    } else if (!vmName?.trim()) {
+        // Resource group specified but no VM name: get all VMs in that resource group
+        for await (const virtualMachine of client.virtualMachines.list(g)) {
+            if (virtualMachine.name) {
+                vmsToUpdate.push({ resourceGroup: g, vmName: virtualMachine.name });
+            }
+        }
+    } else {
+        // Both resource group and VM name specified
+        vmsToUpdate.push({ resourceGroup: g, vmName });
     }
 
+    // Update all identified VMs
+    const updatePromises = vmsToUpdate.map(({ resourceGroup, vmName: vm }) =>
+        updateSingleDisk(context, resourceGroup, vm, skuName, wait)
+    );
+
+    const results = await Promise.allSettled(updatePromises);
+    return results.map(res => res.status === "fulfilled" ? res.value : res.reason);
+}
+
+async function updateSingleDisk(
+    context: InvocationContext,
+    g: string,
+    vmName: string,
+    skuName: string,
+    wait: boolean
+): Promise<any> {
     const diskUpdateParameter: DiskUpdate = {
         sku: {
             name: skuName,
@@ -144,6 +165,7 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
 
     const [virtualMachine, error] = await safeWait(client.virtualMachines.get(g, vmName));
     const disk_name = virtualMachine?.storageProfile?.osDisk?.name;
+
     if (error) {
         logError(context, error, `Error while updating the OS disk of virtual machine '${vmName}' in resource group '${g}'`);
         const result: VirtualMachineOperationState = {
@@ -154,8 +176,9 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
         };
         return Promise.reject(result);
     }
+
     if (disk_name === undefined) {
-        const error = new Error ("Disk not found");
+        const error = new Error("Disk not found");
         logError(context, error, `Error while updating the OS disk of virtual machine '${vmName}' in resource group '${g}'`);
         const result: VirtualMachineOperationState = {
             virtualMachineName: vmName,
@@ -185,15 +208,14 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
             waitedUntilCompletion: wait,
         };
         return result;
-    }
-    catch (error: unknown) {
+    } catch (error: unknown) {
         logError(context, error, `Error while updating the OS disk of virtual machine '${vmName}' in resource group '${g}'`);
         const result: VirtualMachineOperationState = {
             virtualMachineName: vmName,
             resourceGroup: g,
             status: "failed",
-            error: error instanceof Error ? error : new Error (String(error)),
+            error: error instanceof Error ? error : new Error(String(error)),
         };
         return Promise.reject(result);
-    }    
+    }
 }
