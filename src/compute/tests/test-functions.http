@@ -3,3 +3,6 @@ GET {{ $dotenv %baseUrl }}/api/vms/list?{{ $dotenv %authCode }}g={{ $dotenv %res
 Accept: application/json
 
 ###
+
+POST {{ $dotenv %baseUrl }}/api/vms/ensureDiskSku?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }} HTTP/1.1
+Accept: application/json
