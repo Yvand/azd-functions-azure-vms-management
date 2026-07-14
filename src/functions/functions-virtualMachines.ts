@@ -110,10 +110,9 @@ async function setVirtualMachinesDiskSKU(request: HttpRequest, context: Invocati
         const vmsParam = request.query.get('vms');
         const wait = request.query.has('nowait') ? false : true;
         const skuName = request.query.get('sku') || CommonConfig.AutomationDiskSKUName;
+        if (!g) { return { status: 400, body: `Required parameters are missing.` }; }
 
-        const result: any[] = !g
-            ? await disk_updateOsDiskSku(context, "", "", skuName, wait)
-            : await setVirtualMachinesDiskSKUForGroup(context, g, vmsParam, skuName, wait);
+        const result: any[] = await setVirtualMachinesDiskSKUForGroup(context, g, vmsParam, skuName, wait);
         return { status: 200, jsonBody: result };
     }
     catch (error: unknown) {
