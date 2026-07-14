@@ -71,7 +71,7 @@ export async function deallocateVirtualMachines(request: HttpRequest, context: I
 };
 
 /**
- * Ensures that the specified disk SKU is applied to all the virtual machines which have the tag 'Automation:vm-disk'.
+ * Ensures that the specified disk SKU is applied to all the virtual machines in the subscription
  * @param context The invocation context.
  * @param skuName The name of the disk SKU to apply.
  * @returns A promise that resolves when the operation is complete.
