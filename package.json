@@ -21,16 +21,16 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "@azure/arm-compute": "^24.0.0",
+    "@azure/arm-compute": "^24.1.0",
     "@azure/arm-resources": "^7.0.0",
     "@azure/arm-security": "^5.0.0",
-    "@azure/core-lro": "^3.3.1",
-    "@azure/functions": "^4.8.0",
+    "@azure/core-lro": "^3.4.0",
+    "@azure/functions": "^4.16.2",
     "@azure/identity": "^4.12.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.1",
-    "azure-functions-core-tools": "^4.3.0",
+    "azure-functions-core-tools": "^4.12.1",
     "rimraf": "^6.0.1",
     "typescript": "^5.9.3"
   }
