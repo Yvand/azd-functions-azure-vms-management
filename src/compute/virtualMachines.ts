@@ -117,14 +117,7 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
 
             const resourceGroup = getResourceGroupName(virtualMachine.id);
             if (!resourceGroup) {
-                const error = new Error(`Resource group not found for virtual machine '${virtualMachine.name}'`);
-                const result: VirtualMachineOperationState = {
-                    virtualMachineName: virtualMachine.name,
-                    resourceGroup: "",
-                    status: "failed",
-                    error,
-                };
-                vmsToUpdate.push({ resourceGroup: "", vmName: "" }); // Mark for error handling
+                logError(context, null, `Resource group not found for virtual machine '${virtualMachine.id}'`);
                 continue;
             }
             vmsToUpdate.push({ resourceGroup, vmName: virtualMachine.name });
