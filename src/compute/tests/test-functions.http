@@ -11,5 +11,7 @@ Accept: application/json
 
 ###
 
+// @name vmsSetDiskSku
+// @description Set the disk SKU of all VMs in the specified resource group to the desired value.
 POST {{ $dotenv %baseUrl }}/api/vms/setDiskSku?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }} HTTP/1.1
 Accept: application/json
