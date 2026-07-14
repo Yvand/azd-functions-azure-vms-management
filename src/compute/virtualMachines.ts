@@ -67,7 +67,7 @@ export async function virtualMachines_start(context: InvocationContext, g: strin
             virtualMachineName: vmName,
             resourceGroup: g,
             status: "failed",
-            error: error instanceof Error ? error : new Error (String(error)),
+            error: error instanceof Error ? error : new Error(String(error)),
         };
         return Promise.reject(result);
     }
@@ -100,7 +100,7 @@ export async function virtualMachines_deallocate(context: InvocationContext, g: 
             virtualMachineName: vmName,
             resourceGroup: g,
             status: "failed",
-            error: error instanceof Error ? error : new Error (String(error)),
+            error: error instanceof Error ? error : new Error(String(error)),
         };
         return Promise.reject(result);
     }
@@ -130,12 +130,17 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
             vmsToUpdate.push({ resourceGroup, vmName: virtualMachine.name });
         }
     } else if (!vmName?.trim()) {
-        // Resource group specified but no VM name: get all VMs in that resource group
-        for await (const virtualMachine of client.virtualMachines.list(g)) {
-            if (virtualMachine.name) {
-                vmsToUpdate.push({ resourceGroup: g, vmName: virtualMachine.name });
+        // Resource group specified but no VM name: get all VMs in that resource group (it may not exist so errors must be handled)
+        try {
+            for await (const virtualMachine of client.virtualMachines.list(g)) {
+                if (virtualMachine.name) {
+                    vmsToUpdate.push({ resourceGroup: g, vmName: virtualMachine.name });
+                }
             }
+        } catch (error) {
+            logError(context, error, `Error while listing virtual machines in resource group '${g}'`);
         }
+
     } else {
         // Both resource group and VM name specified
         vmsToUpdate.push({ resourceGroup: g, vmName });

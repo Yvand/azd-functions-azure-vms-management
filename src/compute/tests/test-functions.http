@@ -4,5 +4,12 @@ Accept: application/json
 
 ###
 
+// @name vmsEnsureDiskSku
+// @description Ensure that the disk SKU of all VMs in the subscription is set to the desired value.
+POST {{ $dotenv %baseUrl }}/api/vms/ensureDiskSku?{{ $dotenv %authCode }} HTTP/1.1
+Accept: application/json
+
+###
+
 POST {{ $dotenv %baseUrl }}/api/vms/setDiskSku?{{ $dotenv %authCode }}g={{ $dotenv %resourceGroup }} HTTP/1.1
 Accept: application/json

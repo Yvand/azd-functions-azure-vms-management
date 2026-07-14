@@ -20,8 +20,8 @@ $(azd env get-values)
 EOF
 
 if [ -z "$CUSTOM_ROLE_DEFINITION_NAME" ]; then
-   echo -e "${RED}Could not get the custom role definition name from azd environment file${NC}"
-   exit 1
+   echo -e "${YELLOW}The custom role definition name was not found in the azd environment file, skip deleting it in Azure${NC}"
+   exit 0
 fi
 
 echo -e "Deleting custom role '$CUSTOM_ROLE_DEFINITION_NAME' in subscription '${AZURE_SUBSCRIPTION_ID}'..."
