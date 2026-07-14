@@ -43,7 +43,7 @@ The user running **azd** must have at least the following roles to successfully 
 
 ## Prerequisites
 
-- [Node.js 22](https://www.nodejs.org/)
+- [Node.js 24](https://www.nodejs.org/)
 - [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
 - [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 
@@ -174,19 +174,19 @@ resourceGroup="YOUR_RESOURCE_GROUP"
 
 # VMs
 vmsParameter="&vms=VMNAME1,VMNAME2" # Optional, if missing, action applies to all VMs in the resource group
-curl "https://${funchost}.azurewebsites.net/api/vms/list?g=${resourceGroup}"
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/setDiskSku?g=${resourceGroup}${vmsParameter}"
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?g=${resourceGroup}${vmsParameter}"
-curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?g=${resourceGroup}${vmsParameter}}&nowait"
+curl "https://${funchost}.azurewebsites.net/api/vms/list?code=${code}&g=${resourceGroup}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/setDiskSku?code=${code}&g=${resourceGroup}${vmsParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/start?code=${code}&g=${resourceGroup}${vmsParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/vms/deallocate?code=${code}&g=${resourceGroup}${vmsParameter}&nowait"
 
 # JITs
 policyNameParameter="&policyName=default"
 vmParameter="&vm=vmName"
-curl "https://${funchost}.azurewebsites.net/api/jits/list?g=${resourceGroup}"
-curl "https://${funchost}.azurewebsites.net/api/jits/get?g=${resourceGroup}${policyNameParameter}${vmParameter}"
-curl -X POST "https://${funchost}.azurewebsites.net/api/jits/createOrUpdate?g=${resourceGroup}${policyNameParameter}${vmParameter}"
-curl -X POST "https://${funchost}.azurewebsites.net/api/jits/initiate?g=${resourceGroup}${policyNameParameter}${vmParameter}"
-curl -X POST "https://${funchost}.azurewebsites.net/api/jits/delete?g=${resourceGroup}${policyNameParameter}"
+curl "https://${funchost}.azurewebsites.net/api/jits/list?code=${code}&g=${resourceGroup}"
+curl "https://${funchost}.azurewebsites.net/api/jits/get?code=${code}&g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/jits/createOrUpdate?code=${code}&g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/jits/initiate?code=${code}&g=${resourceGroup}${policyNameParameter}${vmParameter}"
+curl -X POST "https://${funchost}.azurewebsites.net/api/jits/delete?code=${code}&g=${resourceGroup}${policyNameParameter}"
 ```
 
 The same script, which calls the functions when they run in your local environment:
@@ -230,7 +230,7 @@ Alternatively, you can delete the resource group, which has the azd environment'
 The custom role definition needs to be deleted manually, either through the [Subscriptions page in the Azure portal](https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade) > **Access control (IAM)** > **Roles** , or using the commands below:
 
 ```shell
-az role assignment delete --role --name "customRoleDef-NAME" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
+az role assignment delete --role "customRoleDef-NAME" --scope "/subscriptions/00000000-0000-0000-0000-000000000000"
 az role definition delete --name "customRoleDef-NAME"
 ```
 

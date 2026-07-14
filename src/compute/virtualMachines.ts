@@ -5,11 +5,28 @@ import { getAzureCredential } from "../utils/authentication.js";
 import { CommonConfig, VirtualMachineOperationState, safeWait } from "../utils/common.js";
 import { logError, logInfo } from "../utils/loggingHandler.js";
 
+// https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/compute/arm-compute
 // https://github.com/Azure-Samples/azure-sdk-for-js-samples/tree/main/samples/compute
 // https://learn.microsoft.com/en-us/javascript/api/overview/azure/arm-compute-readme?view=azure-node-latest
 // https://learn.microsoft.com/en-us/javascript/api/@azure/arm-compute/computemanagementclient?view=azure-node-latest
 // https://learn.microsoft.com/en-us/javascript/api/@azure/arm-compute/virtualmachine?view=azure-node-latest
 const client = new ComputeManagementClient(getAzureCredential(), CommonConfig.SubscriptionId);
+
+function getResourceGroupName(resourceId: string | undefined): string | undefined {
+    if (!resourceId) {
+        return undefined;
+    }
+
+    const resourceGroupMarker = "/resourceGroups/";
+    const start = resourceId.toLowerCase().indexOf(resourceGroupMarker.toLowerCase());
+    if (start === -1) {
+        return undefined;
+    }
+
+    const valueStart = start + resourceGroupMarker.length;
+    const valueEnd = resourceId.indexOf("/", valueStart);
+    return valueEnd === -1 ? resourceId.slice(valueStart) : resourceId.slice(valueStart, valueEnd);
+}
 
 export async function virtualMachines_list(g: string): Promise<VirtualMachine[]> {
     let virtualMachines: VirtualMachine[] = [];
@@ -27,12 +44,13 @@ export async function virtualMachines_start(context: InvocationContext, g: strin
     let operationStatus: OperationStatus;
     try {
         if (wait) {
-            await client.virtualMachines.beginStartAndWait(g, vmName)
+            await client.virtualMachines.start(g, vmName);
             operationStatus = "succeeded";
             logInfo(context, `Started virtual machine '${vmName}' in resource group '${g}'`);
         } else {
-            const response = await client.virtualMachines.beginStart(g, vmName)
-            operationStatus = response.getOperationState().status;
+            const poller = client.virtualMachines.start(g, vmName);
+            await poller.submitted();
+            operationStatus = poller.operationState!.status;
             logInfo(context, `Starting virtual machine '${vmName}' in resource group '${g}' without waiting for completion. Status: '${operationStatus}'`);
         }
         const result: VirtualMachineOperationState = {
@@ -49,7 +67,7 @@ export async function virtualMachines_start(context: InvocationContext, g: strin
             virtualMachineName: vmName,
             resourceGroup: g,
             status: "failed",
-            error: error instanceof Error ? error : new Error (String(error)),
+            error: error instanceof Error ? error : new Error(String(error)),
         };
         return Promise.reject(result);
     }
@@ -59,12 +77,13 @@ export async function virtualMachines_deallocate(context: InvocationContext, g: 
     try {
         let operationStatus: OperationStatus;
         if (wait) {
-            await client.virtualMachines.beginDeallocateAndWait(g, vmName)
+            await client.virtualMachines.deallocate(g, vmName);
             operationStatus = "succeeded";
             logInfo(context, `Deallocated virtual machine '${vmName}' in resource group '${g}'`);
         } else {
-            const response = await client.virtualMachines.beginDeallocate(g, vmName)
-            operationStatus = response.getOperationState().status;
+            const poller = client.virtualMachines.deallocate(g, vmName);
+            await poller.submitted();
+            operationStatus = poller.operationState!.status;
             logInfo(context, `Deallocating virtual machine '${vmName}' in resource group '${g}' without waiting for completion. Status: '${operationStatus}'`);
         }
         const result: VirtualMachineOperationState = {
@@ -81,14 +100,61 @@ export async function virtualMachines_deallocate(context: InvocationContext, g: 
             virtualMachineName: vmName,
             resourceGroup: g,
             status: "failed",
-            error: error instanceof Error ? error : new Error (String(error)),
+            error: error instanceof Error ? error : new Error(String(error)),
         };
         return Promise.reject(result);
     }
 }
 
 export async function disk_updateOsDiskSku(context: InvocationContext, g: string, vmName: string, skuName: string, wait: boolean = true): Promise<any> {
+    // Determine which VMs to update
+    const vmsToUpdate: Array<{ resourceGroup: string; vmName: string }> = [];
 
+    if (!g?.trim()) {
+        // No resource group specified: get all VMs from all resource groups
+        for await (const virtualMachine of client.virtualMachines.listAll()) {
+            if (!virtualMachine.name) continue;
+
+            const resourceGroup = getResourceGroupName(virtualMachine.id);
+            if (!resourceGroup) {
+                logError(context, null, `Resource group not found for virtual machine '${virtualMachine.id}'`);
+                continue;
+            }
+            vmsToUpdate.push({ resourceGroup, vmName: virtualMachine.name });
+        }
+    } else if (!vmName?.trim()) {
+        // Resource group specified but no VM name: get all VMs in that resource group (it may not exist so errors must be handled)
+        try {
+            for await (const virtualMachine of client.virtualMachines.list(g)) {
+                if (virtualMachine.name) {
+                    vmsToUpdate.push({ resourceGroup: g, vmName: virtualMachine.name });
+                }
+            }
+        } catch (error) {
+            logError(context, error, `Error while listing virtual machines in resource group '${g}'`);
+        }
+
+    } else {
+        // Both resource group and VM name specified
+        vmsToUpdate.push({ resourceGroup: g, vmName });
+    }
+
+    // Update all identified VMs
+    const updatePromises = vmsToUpdate.map(({ resourceGroup, vmName: vm }) =>
+        updateSingleDisk(context, resourceGroup, vm, skuName, wait)
+    );
+
+    const results = await Promise.allSettled(updatePromises);
+    return results.map(res => res.status === "fulfilled" ? res.value : res.reason);
+}
+
+async function updateSingleDisk(
+    context: InvocationContext,
+    g: string,
+    vmName: string,
+    skuName: string,
+    wait: boolean
+): Promise<any> {
     const diskUpdateParameter: DiskUpdate = {
         sku: {
             name: skuName,
@@ -97,6 +163,7 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
 
     const [virtualMachine, error] = await safeWait(client.virtualMachines.get(g, vmName));
     const disk_name = virtualMachine?.storageProfile?.osDisk?.name;
+
     if (error) {
         logError(context, error, `Error while updating the OS disk of virtual machine '${vmName}' in resource group '${g}'`);
         const result: VirtualMachineOperationState = {
@@ -107,8 +174,9 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
         };
         return Promise.reject(result);
     }
+
     if (disk_name === undefined) {
-        const error = new Error ("Disk not found");
+        const error = new Error("Disk not found");
         logError(context, error, `Error while updating the OS disk of virtual machine '${vmName}' in resource group '${g}'`);
         const result: VirtualMachineOperationState = {
             virtualMachineName: vmName,
@@ -122,12 +190,13 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
     try {
         let operationStatus: OperationStatus;
         if (wait) {
-            await client.disks.beginUpdateAndWait(g, disk_name, diskUpdateParameter)
+            await client.disks.update(g, disk_name, diskUpdateParameter);
             operationStatus = "succeeded";
             logInfo(context, `Updated the OS disk of virtual machine '${vmName}' in resource group '${g}' to SKU '${skuName}'`);
         } else {
-            const response = await client.disks.beginUpdate(g, disk_name, diskUpdateParameter);
-            operationStatus = response.getOperationState().status;
+            const poller = client.disks.update(g, disk_name, diskUpdateParameter);
+            await poller.submitted();
+            operationStatus = poller.operationState!.status;
             logInfo(context, `Updating the OS disk of virtual machine '${vmName}' in resource group '${g}' without waiting for completion. Status: '${operationStatus}'`);
         }
         const result: VirtualMachineOperationState = {
@@ -137,15 +206,14 @@ export async function disk_updateOsDiskSku(context: InvocationContext, g: string
             waitedUntilCompletion: wait,
         };
         return result;
-    }
-    catch (error: unknown) {
+    } catch (error: unknown) {
         logError(context, error, `Error while updating the OS disk of virtual machine '${vmName}' in resource group '${g}'`);
         const result: VirtualMachineOperationState = {
             virtualMachineName: vmName,
             resourceGroup: g,
             status: "failed",
-            error: error instanceof Error ? error : new Error (String(error)),
+            error: error instanceof Error ? error : new Error(String(error)),
         };
         return Promise.reject(result);
-    }    
+    }
 }

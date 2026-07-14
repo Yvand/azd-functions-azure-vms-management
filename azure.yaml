@@ -6,5 +6,12 @@ metadata:
 services:
   api:
     project: .
-    language: js
+    language: ts
     host: function
+hooks:
+  predown:
+    posix:
+      shell: sh
+      run: ./scripts/remove-custom-role.sh
+      continueOnError: true
+      interactive: true
